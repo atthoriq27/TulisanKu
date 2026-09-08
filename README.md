@@ -1,5 +1,10 @@
-# TulisanKu ✍️
+# TulisanKu ✍️ `v1.3.2`
 **Tools Copy-Paste Tulisan ke Foto Kertas dengan Font Tulisan Tangan Sendiri**
+*(Edisi Lengkap Tugas Kuliah & Sekolah Indonesia)*
+
+[![Version](https://img.shields.io/badge/version-v1.3.2-blue.svg)](https://github.com)
+[![Status](https://img.shields.io/badge/status-ready--to--deploy-success.svg)](https://github.com)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com)
 
 Aplikasi web modern berbasis HTML5 Canvas yang memungkinkan Anda menyalin dan menempel teks apapun ke atas lembaran kertas (buku tulis, binder, folio, dll.) menggunakan **font tulisan tangan Anda sendiri (.ttf / .otf / .woff)** dengan hasil yang 100% natural, organik, dan realistis layaknya tulisan fisik asli.
 
