@@ -2573,6 +2573,36 @@ let prevCharBtn, nextCharBtn, glyphCanvas, gctx;
 let penWidthSlider, penWidthVal, undoStrokeBtn, clearGlyphBtn;
 let studioFontNameInput, studioSmartFallbackToggle, downloadTtfBtn, applyStudioFontBtn;
 
+// Auto-Save Studio Glyphs to LocalStorage
+function saveStudioToLocalStorage() {
+  try {
+    localStorage.setItem('tulisanku_studio_glyphs', JSON.stringify(studioState.glyphs));
+    if (studioFontNameInput && studioFontNameInput.value) {
+      localStorage.setItem('tulisanku_studio_fontname', studioFontNameInput.value.trim());
+    }
+  } catch (e) {
+    console.warn('LocalStorage save failed:', e);
+  }
+}
+
+function loadStudioFromLocalStorage() {
+  try {
+    const saved = localStorage.getItem('tulisanku_studio_glyphs');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        studioState.glyphs = parsed;
+      }
+    }
+    const savedName = localStorage.getItem('tulisanku_studio_fontname');
+    if (savedName && studioFontNameInput) {
+      studioFontNameInput.value = savedName;
+    }
+  } catch (e) {
+    console.warn('LocalStorage load failed:', e);
+  }
+}
+
 function initFontStudio() {
   fontStudioModal = document.getElementById('fontStudioModal');
   closeFontStudioBtn = document.getElementById('closeFontStudioBtn');
@@ -2594,6 +2624,14 @@ function initFontStudio() {
   studioSmartFallbackToggle = document.getElementById('studioSmartFallbackToggle');
   downloadTtfBtn = document.getElementById('downloadTtfBtn');
   applyStudioFontBtn = document.getElementById('applyStudioFontBtn');
+
+  // Restore saved letters from localStorage
+  loadStudioFromLocalStorage();
+  updateProgressBadge();
+
+  if (studioFontNameInput) {
+    studioFontNameInput.addEventListener('input', saveStudioToLocalStorage);
+  }
 
   // Load base template font in background for smart fallback
   if (window.opentype) {
@@ -2826,6 +2864,7 @@ function setupGlyphCanvasDrawing() {
       drawGlyphCanvas();
       renderCharGrid();
       updateProgressBadge();
+      saveStudioToLocalStorage();
     }
   };
 
@@ -3042,6 +3081,7 @@ function undoLastStroke() {
     drawGlyphCanvas();
     renderCharGrid();
     updateProgressBadge();
+    saveStudioToLocalStorage();
   }
 }
 
@@ -3050,6 +3090,7 @@ function clearCurrentGlyph() {
   drawGlyphCanvas();
   renderCharGrid();
   updateProgressBadge();
+  saveStudioToLocalStorage();
 }
 
 function strokesToOpentypePath(strokes, penWidth) {
@@ -3293,7 +3334,7 @@ async function handleDownloadTtf() {
     alert('Gagal mengunduh file font: ' + err.message);
   } finally {
     downloadTtfBtn.disabled = false;
-    downloadTtfBtn.innerHTML = '<i class="ph-bold ph-download-simple"></i> <span>Unduh .TTF</span>';
+    downloadTtfBtn.innerHTML = '<i class="ph-bold ph-floppy-disk text-sm text-blue-600"></i> <span>Simpan File .TTF</span>';
   }
 }
 

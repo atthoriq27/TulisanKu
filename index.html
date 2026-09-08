@@ -884,7 +884,10 @@ Setiap sila memuat nilai-nilai luhur kepribadian bangsa yang saling terhubung sa
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <span class="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full hidden sm:flex items-center gap-1 font-medium select-none" title="Setiap huruf yang digambar otomatis tersimpan di browser Anda">
+            <i class="ph-bold ph-floppy-disk"></i> Tersimpan Otomatis
+          </span>
           <span id="studioProgressBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
             0 / 62 Huruf Digambar
           </span>
@@ -1010,9 +1013,9 @@ Setiap sila memuat nilai-nilai luhur kepribadian bangsa yang saling terhubung sa
 
         <!-- Action buttons -->
         <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button type="button" id="downloadTtfBtn" class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 hover:bg-white text-slate-700 text-xs font-semibold transition" title="Simpan file .TTF ke perangkat">
-            <i class="ph-bold ph-download-simple"></i>
-            <span>Unduh .TTF</span>
+          <button type="button" id="downloadTtfBtn" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs hover:shadow transition active:scale-95" title="Simpan file .TTF ke perangkat agar bisa di-install di Word / Photoshop / HP">
+            <i class="ph-bold ph-floppy-disk text-sm text-blue-600"></i>
+            <span>Simpan File .TTF</span>
           </button>
           <button type="button" id="applyStudioFontBtn" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition active:scale-95">
             <i class="ph-bold ph-check-circle text-sm"></i>
