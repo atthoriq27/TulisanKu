@@ -51,11 +51,19 @@ main.main-workspace {
   flex-direction: column;
   align-items: center;
   min-height: 100%;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1.5rem 8rem 1.5rem;
+  padding: 0.75rem 0.5rem 8rem 0.5rem;
   box-sizing: border-box;
+}
+
+@media (min-width: 640px) {
+  .preview-inner-wrapper {
+    width: max-content;
+    min-width: 100%;
+    padding: 1.25rem 1.5rem 8rem 1.5rem;
+  }
 }
 
 /* Custom Scrollbar for controls sidebar */

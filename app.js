@@ -820,23 +820,23 @@ function syncPageCards(totalPages) {
 // Create a single page card (Header + Viewport + Canvas)
 function createPageCardElement(pageNum) {
   const card = document.createElement('div');
-  card.className = 'page-card relative flex flex-col items-center w-max';
+  card.className = 'page-card relative flex flex-col items-center max-w-full';
   card.id = `pageCard-${pageNum}`;
 
   card.innerHTML = `
     <div class="page-card-header w-full flex items-center justify-between text-xs font-semibold text-slate-600 mb-2 px-1 select-none">
-      <div class="flex items-center gap-2">
-        <span class="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-bold border border-blue-200 flex items-center gap-1.5 text-xs">
-          <i class="ph-bold ph-file-text text-blue-600"></i> Halaman ${pageNum}
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <span class="px-2 sm:px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-bold border border-blue-200 flex items-center gap-1 text-[11px] sm:text-xs">
+          <i class="ph-bold ph-file-text text-blue-600"></i> Hal ${pageNum}
         </span>
         <span class="text-[11px] text-slate-400 hidden sm:inline">• Resolusi: ${state.paper.width} × ${state.paper.height} px</span>
       </div>
-      <button type="button" class="download-single-btn px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-semibold transition flex items-center gap-1 shadow-2xs active:scale-95" data-page="${pageNum}" title="Unduh gambar halaman ${pageNum}">
+      <button type="button" class="download-single-btn px-2 sm:px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-semibold transition flex items-center gap-1 shadow-2xs active:scale-95" data-page="${pageNum}" title="Unduh gambar halaman ${pageNum}">
         <i class="ph-bold ph-download-simple"></i>
         <span>Unduh Hal ${pageNum}</span>
       </button>
     </div>
-    <div class="page-viewport relative shrink-0 shadow-2xl rounded-sm overflow-hidden bg-white">
+    <div class="page-viewport relative shrink-0 shadow-2xl rounded-sm overflow-hidden bg-white max-w-full">
       <canvas class="page-canvas block cursor-default" data-page="${pageNum}"></canvas>
     </div>
   `;
@@ -1515,6 +1515,10 @@ function setupEventListeners() {
       previewPanel.classList.add('block');
       mobileTabPreview.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-xs text-center flex items-center justify-center gap-1.5 transition';
       mobileTabControls.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-center flex items-center justify-center gap-1.5 transition';
+      if (previewPanel) {
+        previewPanel.scrollLeft = 0;
+        previewPanel.scrollTop = 0;
+      }
       fitCanvasToScreen();
     });
   }
@@ -2260,13 +2264,29 @@ function adjustZoom(delta) {
 function fitCanvasToScreen() {
   const container = previewPanel || (documentPagesContainer ? documentPagesContainer.parentElement : null);
   if (!container) return;
-  const availWidth = Math.max(280, container.clientWidth - 56);
-  const availHeight = Math.max(280, container.clientHeight - 130);
 
-  const scaleX = availWidth / state.paper.width;
-  const scaleY = availHeight / state.paper.height;
-  state.view.zoom = Math.max(0.15, Math.min(scaleX, scaleY, 0.95));
+  const isMobile = window.innerWidth < 768;
+
+  if (isMobile) {
+    // Di HP: paskan ke lebar layar agar kertas tampil proporsional (~92% lebar layar) dan terbaca jelas
+    const availWidth = Math.max(260, container.clientWidth - 20);
+    const scaleX = availWidth / state.paper.width;
+    state.view.zoom = Math.max(0.18, Math.min(scaleX, 0.95));
+  } else {
+    // Di Desktop: paskan ke lebar dan tinggi viewport
+    const availWidth = Math.max(280, container.clientWidth - 56);
+    const availHeight = Math.max(280, container.clientHeight - 130);
+    const scaleX = availWidth / state.paper.width;
+    const scaleY = availHeight / state.paper.height;
+    state.view.zoom = Math.max(0.15, Math.min(scaleX, scaleY, 0.95));
+  }
+
   applyZoom();
+
+  // Pastikan posisi scroll horizontal selalu kembali ke 0 agar kertas tidak terpotong di kiri
+  if (previewPanel) {
+    previewPanel.scrollLeft = 0;
+  }
 }
 
 function applyZoom() {
