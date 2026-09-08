@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TulisanKu - Generator Tulisan Tangan di Kertas & Foto</title>
+  <meta name="description" content="Aplikasi pembuat tulisan tangan otomatis di atas kertas buku tulis, binder, dan folio dengan font kustom, filter CamScanner, dan ekspor PDF.">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'><path d='M21.7 6.3l-4-4a1 1 0 0 0-1.4 0l-13 13a1 1 0 0 0-.3.7v4a1 1 0 0 0 1 1h4a1 1 0 0 0 .7-.3l13-13a1 1 0 0 0 0-1.4zM7.4 19H5v-2.4l10-10 2.4 2.4z'/></svg>">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts for handwriting presets -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Bad+Script&family=Caveat:wght@400;600&family=Delius&family=Gloria+Hallelujah&family=Gochi+Hand&family=Indie+Flower&family=Inter:wght@400;500;600;700&family=Kalam:wght@300;400;700&family=Marck+Script&family=Patrick+Hand&family=Reenie+Beanie&family=Shadows+Into+Light&display=swap" rel="stylesheet">
+  <!-- Opentype.js CDN for in-browser TTF font creation -->
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+  <!-- jsPDF CDN for client-side PDF document generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans h-screen max-h-screen flex flex-col antialiased selection:bg-blue-200 overflow-hidden">
+
+  <!-- Header / Navbar -->
+  <header class="app-header bg-white border-b border-slate-200 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between shadow-xs shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+        <i class="ph-bold ph-pen-nib text-xl"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-lg text-slate-900 tracking-tight">TulisanKu</h1>
+          <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 border border-blue-200">v1.0</span>
+        </div>
+        <p class="text-xs text-slate-500 hidden sm:block">Copy-paste tulisan ke foto kertas dengan font tulisan tangan sendiri</p>
+      </div>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Guide Toggle -->
+      <button id="toggleGuidesBtn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition" title="Tampilkan garis bantu untuk pas-in ke garis kertas">
+        <i class="ph-bold ph-ruler text-sm text-blue-600"></i>
+        <span class="hidden sm:inline">Garis Panduan</span>
+      </button>
+
+      <!-- Zoom controls (Kaca Pembesar Tampilan Layar) -->
+      <div class="hidden md:flex items-center gap-1.5 bg-slate-100 rounded-lg p-1 border border-slate-200 text-xs" title="Zoom Kaca Pembesar Layar (Hanya memperbesar tampilan preview, tidak mengubah ukuran cetak kertas asli)">
+        <span class="text-[11px] text-slate-500 font-semibold px-1 flex items-center gap-1 select-none">
+          <i class="ph-bold ph-magnifying-glass text-slate-400 text-xs"></i> Zoom:
+        </span>
+        <div class="flex items-center bg-white rounded border border-slate-200 shadow-2xs">
+          <button id="zoomOutBtn" type="button" class="px-2 py-1 hover:bg-slate-50 rounded-l text-slate-600 hover:text-slate-900 transition" title="Perkecil Zoom (-10%)"><i class="ph-bold ph-minus"></i></button>
+          <button id="zoomReset100Btn" type="button" class="px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-50 transition select-none" title="Klik untuk lihat 100% ukuran asli"><span id="zoomLevelText">100%</span></button>
+          <button id="zoomInBtn" type="button" class="px-2 py-1 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition" title="Perbesar Zoom (+10%)"><i class="ph-bold ph-plus"></i></button>
+          <button id="zoomFitBtn" type="button" class="px-2 py-1 hover:bg-slate-50 rounded-r text-slate-600 hover:text-blue-600 border-l border-slate-200 transition text-[11px] font-medium flex items-center gap-1" title="Sesuaikan agar pas di layar"><i class="ph-bold ph-arrows-out"></i> Pas Layar</button>
+        </div>
+      </div>
+
+      <!-- Export PDF Button -->
+      <button id="downloadPdfNavBtn" class="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-semibold px-3 py-2 rounded-lg shadow-xs hover:shadow transition active:scale-95" title="Download 1 file PDF gabungan semua halaman siap kumpul tugas">
+        <i class="ph-bold ph-file-pdf text-base"></i>
+        <span>Download PDF</span>
+      </button>
+
+      <!-- Export Current Button -->
+      <button id="downloadPageBtn" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-lg shadow-sm hover:shadow transition active:scale-95">
+        <i class="ph-bold ph-download-simple text-base"></i>
+        <span>Download PNG</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile View Switcher Tab (Hanya tampil di HP/Tablet < lg) -->
+  <div class="lg:hidden bg-white border-b border-slate-200 px-4 py-2 sticky top-[57px] z-30 flex items-center justify-center shadow-xs">
+    <div class="inline-flex p-1 bg-slate-100 rounded-xl w-full max-w-sm border border-slate-200 text-xs font-semibold">
+      <button type="button" id="mobileTabControls" class="flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-xs text-center flex items-center justify-center gap-1.5 transition">
+        <i class="ph-bold ph-sliders-horizontal"></i> Pengaturan & Teks
+      </button>
+      <button type="button" id="mobileTabPreview" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-center flex items-center justify-center gap-1.5 transition">
+        <i class="ph-bold ph-eye"></i> Lihat Hasil Kertas
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Workspace -->
+  <main class="main-workspace flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0 h-[calc(100vh-61px)]">
+
+    <!-- Left Controls Panel -->
+    <aside id="controlsPanel" class="w-full lg:w-[440px] xl:w-[480px] bg-white border-r border-slate-200 flex flex-col h-full max-h-full min-h-0 overflow-y-auto custom-scrollbar z-20 shadow-sm shrink-0">
+      
+      <!-- Accordion Navigation / Tabs -->
+      <div class="p-4 space-y-4">
+
+        <!-- 1. FONT SECTION -->
+        <div class="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80">
+          <div class="flex items-center justify-between mb-2.5">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <i class="ph-bold ph-text-aa text-blue-600"></i> 1. Font Tulisan Tangan
+            </label>
+            <span id="fontStatusBadge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">Preset Aktif</span>
+          </div>
+
+          <!-- Create Font In-App Button -->
+          <div class="mb-3">
+            <button type="button" id="openFontStudioBtn" class="w-full py-2.5 px-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-xl font-semibold text-xs flex items-center justify-between shadow-sm hover:shadow-md transition active:scale-[0.98] group">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white group-hover:scale-105 transition">
+                  <i class="ph-bold ph-pencil-simple-line text-sm"></i>
+                </div>
+                <div class="text-left">
+                  <span class="block text-xs font-bold leading-tight">Bikin Font Sendiri di Sini</span>
+                  <span class="block text-[10px] text-blue-100 font-normal">Gambar huruf langsung di browser</span>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 bg-white/20 text-[10px] rounded-full uppercase font-bold tracking-wider">Studio ✨</span>
+            </button>
+          </div>
+
+          <!-- Custom Font Upload Box -->
+          <div class="mb-3">
+            <label for="fontFileInput" class="relative group cursor-pointer flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-lg bg-blue-50/40 hover:bg-blue-50/80 transition text-center">
+              <input type="file" id="fontFileInput" accept=".ttf,.otf,.woff,.woff2" class="hidden">
+              <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                <i class="ph-bold ph-upload-simple text-base"></i>
+              </div>
+              <p class="text-xs font-semibold text-blue-900 group-hover:text-blue-700">Upload Font Sendiri (.ttf, .otf, .woff)</p>
+              <p class="text-[11px] text-slate-500">File font tulisan tangan hasil buatan Anda</p>
+            </label>
+          </div>
+
+          <!-- Saved Font from IndexedDB Status -->
+          <div id="fontStorageInfo" class="hidden mb-3 p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-xs flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-emerald-800 font-medium truncate">
+              <i class="ph-bold ph-floppy-disk text-emerald-600 text-sm"></i>
+              <span id="savedFontLabel" class="truncate max-w-[200px]">Font Kustom Aktif</span>
+            </div>
+            <button id="removeSavedFontBtn" class="text-red-500 hover:text-red-700 text-[11px] font-semibold px-2 py-0.5 rounded hover:bg-red-50 transition" title="Hapus font dari browser">Hapus</button>
+          </div>
+
+          <!-- Sumber Cari Font Tulisan Tangan Siap Pakai -->
+          <div class="mb-3 p-2.5 bg-blue-50/70 border border-blue-200/80 rounded-lg text-xs text-slate-700">
+            <div class="flex items-center gap-1.5 font-bold text-blue-900 mb-1">
+              <i class="ph-bold ph-magnifying-glass text-blue-600"></i>
+              <span>Mau Cari Font Tulisan Tangan Lainnya?</span>
+            </div>
+            <p class="text-[10.5px] text-slate-600 leading-relaxed mb-2">
+              Selain bikin sendiri di <b>Studio Font</b> di atas atau pakai koleksi bawaan di bawah, Anda bisa cari ribuan font tulisan tangan gratis (.ttf / .otf) di:
+            </p>
+            <div class="flex items-center gap-1.5 flex-wrap text-[10.5px]">
+              <a href="https://www.dafont.com/theme.php?category=603" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-white hover:bg-blue-100 border border-blue-200 rounded text-blue-700 font-medium inline-flex items-center gap-1 transition shadow-2xs">
+                <span>Dafont Handwriting</span>
+                <i class="ph-bold ph-arrow-square-out text-[9px]"></i>
+              </a>
+              <a href="https://fonts.google.com/?category=Handwriting" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-white hover:bg-blue-100 border border-blue-200 rounded text-blue-700 font-medium inline-flex items-center gap-1 transition shadow-2xs">
+                <span>Google Fonts</span>
+                <i class="ph-bold ph-arrow-square-out text-[9px]"></i>
+              </a>
+              <a href="https://www.1001fonts.com/handwritten-fonts.html" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-white hover:bg-blue-100 border border-blue-200 rounded text-blue-700 font-medium inline-flex items-center gap-1 transition shadow-2xs">
+                <span>1001 Fonts</span>
+                <i class="ph-bold ph-arrow-square-out text-[9px]"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Built-in Font Presets (12 Variasi Font Tulis Tangan) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[11px] text-slate-600 font-semibold block">Pilih Font Tulisan Tangan Bawaan (12 Gaya):</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[220px] overflow-y-auto custom-scrollbar p-0.5" id="fontPresetContainer">
+              <button type="button" data-font="Indie Flower" class="font-preset-btn active text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-blue-500 text-blue-700 font-medium transition flex flex-col" style="font-family: 'Indie Flower', cursive;">
+                <span class="font-bold text-xs truncate">Indie Flower</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Santai & Bulat</span>
+              </button>
+              <button type="button" data-font="Caveat" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Caveat', cursive;">
+                <span class="font-bold text-xs truncate">Caveat</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Pulpen Cepat</span>
+              </button>
+              <button type="button" data-font="Patrick Hand" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Patrick Hand', cursive;">
+                <span class="font-bold text-xs truncate">Patrick Hand</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Anak Sekolah Rapi</span>
+              </button>
+              <button type="button" data-font="Kalam" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Kalam', cursive;">
+                <span class="font-bold text-xs truncate">Kalam</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Huruf Cetak Rapi</span>
+              </button>
+              <button type="button" data-font="Architects Daughter" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Architects Daughter', cursive;">
+                <span class="font-bold text-xs truncate">Architect</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Karakter Arsitek</span>
+              </button>
+              <button type="button" data-font="Shadows Into Light" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Shadows Into Light', cursive;">
+                <span class="font-bold text-xs truncate">Shadows</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Pulpen Gel Tipis</span>
+              </button>
+              <button type="button" data-font="Gloria Hallelujah" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Gloria Hallelujah', cursive;">
+                <span class="font-bold text-xs truncate">Gloria</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Spidol / Bold</span>
+              </button>
+              <button type="button" data-font="Gochi Hand" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Gochi Hand', cursive;">
+                <span class="font-bold text-xs truncate">Gochi Hand</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Kasual Remaja</span>
+              </button>
+              <button type="button" data-font="Marck Script" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Marck Script', cursive;">
+                <span class="font-bold text-xs truncate">Marck Script</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Sambung Halus</span>
+              </button>
+              <button type="button" data-font="Bad Script" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Bad Script', cursive;">
+                <span class="font-bold text-xs truncate">Bad Script</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Sambung Alami</span>
+              </button>
+              <button type="button" data-font="Delius" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Delius', cursive;">
+                <span class="font-bold text-xs truncate">Delius</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Buku Pelajaran</span>
+              </button>
+              <button type="button" data-font="Reenie Beanie" class="font-preset-btn text-left px-2 py-1.5 rounded-md border text-xs bg-white hover:bg-blue-50 border-slate-200 text-slate-700 font-medium transition flex flex-col" style="font-family: 'Reenie Beanie', cursive;">
+                <span class="font-bold text-xs truncate">Reenie Beanie</span>
+                <span class="text-[9px] text-slate-400 font-sans truncate">Catatan Kuliah Cepat</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. BACKGROUND / PAPER SECTION -->
+        <div class="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80">
+          <div class="flex items-center justify-between mb-2.5">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <i class="ph-bold ph-image text-blue-600"></i> 2. Foto Kertas / Background
+            </label>
+            <span id="paperStatusBadge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">Buku Tulis Garis</span>
+          </div>
+
+          <!-- Custom Paper Upload Box -->
+          <div class="mb-3">
+            <label for="paperFileInput" class="relative group cursor-pointer flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-indigo-300 hover:border-indigo-500 rounded-lg bg-indigo-50/30 hover:bg-indigo-50/70 transition text-center">
+              <input type="file" id="paperFileInput" accept="image/*" class="hidden">
+              <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                <i class="ph-bold ph-camera text-base"></i>
+              </div>
+              <p class="text-xs font-semibold text-indigo-900 group-hover:text-indigo-700">Upload Foto Kertas Anda</p>
+              <p class="text-[11px] text-slate-500">Foto buku tulis, binder, folio, atau kertas lainnya</p>
+            </label>
+          </div>
+
+          <!-- Saved Paper from IndexedDB Status -->
+          <div id="paperStorageInfo" class="hidden mb-3 p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-xs flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-emerald-800 font-medium truncate">
+              <i class="ph-bold ph-floppy-disk text-emerald-600 text-sm"></i>
+              <span id="savedPaperLabel" class="truncate max-w-[200px]">Foto Kertas Aktif</span>
+            </div>
+            <button id="removeSavedPaperBtn" class="text-red-500 hover:text-red-700 text-[11px] font-semibold px-2 py-0.5 rounded hover:bg-red-50 transition" title="Hapus foto dari browser">Hapus</button>
+          </div>
+
+          <!-- Pilihan Ukuran Fisik Kertas Asli -->
+          <div class="mb-3 p-2.5 bg-white rounded-lg border border-slate-200">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                <i class="ph-bold ph-frame-corners text-blue-600"></i> Ukuran Kertas Asli (Cetak / Unduh)
+              </span>
+              <span id="paperDimensionBadge" class="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-mono font-semibold">1654 × 2338 px</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5" id="paperSizeContainer">
+              <button type="button" data-size="a4" class="paper-size-btn active px-2 py-1.5 rounded border border-blue-500 bg-blue-50/60 text-blue-700 font-bold text-[11px] text-center transition">
+                A4
+                <span class="block text-[9px] font-normal text-slate-500">Standar (21×29.7)</span>
+              </button>
+              <button type="button" data-size="f4" class="paper-size-btn px-2 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] text-center transition">
+                Folio (F4)
+                <span class="block text-[9px] font-normal text-slate-500">Panjang (21.5×33)</span>
+              </button>
+              <button type="button" data-size="b5" class="paper-size-btn px-2 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] text-center transition">
+                Buku B5
+                <span class="block text-[9px] font-normal text-slate-500">SIDU/KIKY (17.6×25)</span>
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1 italic leading-tight">
+              *Ini ukuran fisik kertas asli saat diunduh. Berbeda dari Zoom Preview (kaca pembesar layar).
+            </p>
+          </div>
+
+          <!-- Built-in Paper Templates (Koleksi Merek Asli Indonesia) -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] text-slate-600 font-semibold block">Pilih Template Merek Kertas Indonesia:</span>
+              <span class="text-[10px] text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded">12 Preset Asli</span>
+            </div>
+            
+            <div class="space-y-3 max-h-[260px] overflow-y-auto custom-scrollbar pr-1 p-0.5" id="paperPresetContainer">
+              <!-- Grup 1: Sinar Dunia (SIDU) & Big Boss -->
+              <div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span> Sinar Dunia (SIDU) & Big Boss
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button type="button" data-paper="sidu-lined" class="paper-preset-btn active flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-blue-500 text-blue-700 font-medium transition" title="Buku tulis SIDU klasik SD/SMP dengan garis merah di tepi kiri">
+                    <i class="ph-bold ph-notebook text-sm shrink-0 text-blue-600"></i>
+                    <span class="truncate">SIDU Garis Merah</span>
+                  </button>
+                  <button type="button" data-paper="sidu-bigboss" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Buku Boxy B5 Big Boss SIDU favorit SMA/kuliah - putih bersih garis abu-abu tanpa garis merah">
+                    <i class="ph-bold ph-book-open-text text-sm shrink-0 text-indigo-600"></i>
+                    <span class="truncate">Big Boss Boxy B5</span>
+                  </button>
+                  <button type="button" data-paper="sidu-folio" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Kertas Double Folio SIDU bergaris biru muda dengan header ganda atas tanpa garis merah">
+                    <i class="ph-bold ph-article text-sm shrink-0 text-cyan-600"></i>
+                    <span class="truncate">Double Folio SIDU</span>
+                  </button>
+                  <button type="button" data-paper="sidu-kotak" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Buku kotak matematika SIDU petak 5mm untuk hitungan matematika">
+                    <i class="ph-bold ph-grid-nine text-sm shrink-0 text-emerald-600"></i>
+                    <span class="truncate">SIDU Kotak MTK</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Grup 2: KIKY Stationery -->
+              <div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span> KIKY Stationery
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button type="button" data-paper="kiky-executive" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Buku tulis KIKY eksekutif kertas putih tebal garis halus modern">
+                    <i class="ph-bold ph-book-bookmark text-sm shrink-0 text-slate-600"></i>
+                    <span class="truncate">KIKY Eksekutif</span>
+                  </button>
+                  <button type="button" data-paper="kiky-binder-line" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Kertas Loose Leaf binder B5 KIKY bergaris dengan lubang ring mahasiswa">
+                    <i class="ph-bold ph-spiral text-sm shrink-0 text-purple-600"></i>
+                    <span class="truncate">KIKY Binder Garis</span>
+                  </button>
+                  <button type="button" data-paper="kiky-binder-grid" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Kertas Loose Leaf binder B5 KIKY kotak halus untuk catatan teknik/grafik">
+                    <i class="ph-bold ph-squares-four text-sm shrink-0 text-teal-600"></i>
+                    <span class="truncate">KIKY Binder Kotak</span>
+                  </button>
+                  <button type="button" data-paper="kiky-binder-dot" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Kertas Loose Leaf binder B5 KIKY pola dot titik modern">
+                    <i class="ph-bold ph-dots-nine text-sm shrink-0 text-amber-600"></i>
+                    <span class="truncate">KIKY Binder Dot</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Grup 3: Paperline & Mirage -->
+              <div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span> Paperline & Mirage
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button type="button" data-paper="paperline-folio" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Kertas folio bergaris merk Paperline resmi untuk dinas dan kantor">
+                    <i class="ph-bold ph-files text-sm shrink-0 text-sky-600"></i>
+                    <span class="truncate">Paperline Folio</span>
+                  </button>
+                  <button type="button" data-paper="mirage-lined" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Buku tulis Mirage kertas putih bersih garis kebiruan halus">
+                    <i class="ph-bold ph-notepad text-sm shrink-0 text-violet-600"></i>
+                    <span class="truncate">Buku Tulis Mirage</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Grup 4: Kertas HVS & Buram Ujian -->
+              <div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span> Kertas HVS & Ujian Sekolah
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button type="button" data-paper="paperone-hvs" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Kertas HVS PaperOne 70/80gsm putih polos tanpa garis untuk tugas makalah">
+                    <i class="ph-bold ph-file text-sm shrink-0 text-slate-500"></i>
+                    <span class="truncate">HVS PaperOne Polos</span>
+                  </button>
+                  <button type="button" data-paper="buram-cakaran" class="paper-preset-btn flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md border text-xs bg-white border-slate-200 text-slate-700 font-medium transition" title="Kertas buram daur ulang abu-krem serat kasar khas cakaran ujian sekolah">
+                    <i class="ph-bold ph-newspaper-clipping text-sm shrink-0 text-amber-700"></i>
+                    <span class="truncate">Kertas Buram Ujian</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. TEXT INPUT SECTION -->
+        <div class="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <i class="ph-bold ph-pencil-line text-blue-600"></i> 3. Masukkan Tulisan & Header
+            </label>
+            <button id="clearHeaderBtn" type="button" class="text-[11px] text-slate-400 hover:text-red-500 font-medium flex items-center gap-1 transition" title="Kosongkan semua isian header">
+              <i class="ph-bold ph-eraser"></i> <span>Kosongkan Header</span>
+            </button>
+          </div>
+
+          <!-- Header (Nama, Kelas, Tanggal, Mapel) - Langsung Tampil, Kosongkan bila tidak diperlukan -->
+          <div id="headerFieldsSection" class="mb-3 p-2.5 bg-white rounded-lg border border-slate-200 space-y-2 text-xs">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+              <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                <i class="ph-bold ph-identification-card text-blue-600"></i> Header Identitas (Opsional)
+              </span>
+              <span class="text-[10px] text-slate-400 italic">Hanya field yang terisi yang akan dicetak ke kertas</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] text-slate-500 font-semibold uppercase">Nama</label>
+                <input type="text" id="headerNameInput" placeholder="Contoh: Budi Santoso" class="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[10px] text-slate-500 font-semibold uppercase">Kelas / NIM</label>
+                <input type="text" id="headerClassInput" placeholder="Contoh: XII IPA 1 / 210101" class="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] text-slate-500 font-semibold uppercase">Tanggal</label>
+                <input type="text" id="headerDateInput" placeholder="Contoh: 14 Oktober 2026" class="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[10px] text-slate-500 font-semibold uppercase">Mata Pelajaran / Judul</label>
+                <input type="text" id="headerSubjectInput" placeholder="Contoh: Bahasa Indonesia" class="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              </div>
+            </div>
+          </div>
+          <!-- Quick Math & Symbol Insert Bar -->
+          <div class="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
+            <span class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0 flex items-center gap-1">
+              <i class="ph-bold ph-function"></i> Sisip MTK:
+            </span>
+            <div class="flex items-center gap-1 shrink-0" id="quickMathBar">
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="≤" title="Kurang dari atau sama dengan">≤</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="≥" title="Lebih dari atau sama dengan">≥</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="≠" title="Tidak sama dengan">≠</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="±" title="Plus minus">±</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="√" title="Akar kuadrat">√</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="²" title="Pangkat dua / kuadrat">²</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="³" title="Pangkat tiga / kubik">³</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="°" title="Derajat">°</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="π" title="Pi (3.14)">π</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="θ" title="Theta">θ</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="α" title="Alpha">α</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="β" title="Beta">β</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="Δ" title="Delta">Δ</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="∑" title="Sigma / Penjumlahan">∑</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="∫" title="Integral">∫</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="½" title="Pecahan setengah">½</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="¼" title="Pecahan seperempat">¼</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="∞" title="Tak hingga">∞</button>
+              <button type="button" class="quick-sym-btn px-2 py-0.5 rounded bg-white hover:bg-amber-50 hover:border-amber-300 border border-slate-200 font-bold text-slate-800 transition" data-sym="≈" title="Mendekati">≈</button>
+            </div>
+          </div>
+
+          <!-- Human Error Tools (Coretan Salah Tulis & Tip-Ex) + Indentasi -->
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-1.5 text-xs bg-slate-100/80 p-2 rounded-lg border border-slate-200/80">
+            <div class="flex items-center gap-1.5">
+              <button id="strikeoutTextBtn" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded border border-slate-200 flex items-center gap-1 shadow-2xs text-[11px] transition active:scale-95" title="Bungkus teks yang diblok dengan garis coretan salah tulis pulpen (~kata~)">
+                <i class="ph-bold ph-text-strikethrough text-slate-700"></i>
+                <span>Coret Kata</span>
+              </button>
+              <button id="tipexTextBtn" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded border border-slate-200 flex items-center gap-1 shadow-2xs text-[11px] transition active:scale-95" title="Bungkus teks yang diblok dengan stiker Tip-Ex kertas ([tipex:kata])">
+                <i class="ph-bold ph-bandage text-amber-600"></i>
+                <span>Tip-Ex Kertas</span>
+              </button>
+            </div>
+            <label for="autoIndentToggle" class="cursor-pointer select-none text-[11px] text-slate-700 font-medium flex items-center gap-1.5 hover:text-blue-600 transition" title="Kalimat pertama di setiap paragraf otomatis menjorok masuk ke dalam">
+              <input type="checkbox" id="autoIndentToggle" class="w-3.5 h-3.5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
+              <span>Indentasi Paragraf</span>
+            </label>
+          </div>
+
+          <!-- Main Textarea -->
+          <div class="relative">
+            <textarea id="mainTextInput" rows="6" placeholder="Paste atau ketik tulisan Anda di sini..." class="w-full p-3 text-xs sm:text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono resize-y bg-white leading-relaxed">Pancasila adalah pilar ideologis negara Indonesia. Nama ini terdiri dari dua kata dari Sanskerta: "panca" berarti lima dan "sila" berarti prinsip atau asas.
+
+Pedoman ini menjadi landasan hidup berbangsa dan bernegara bagi seluruh rakyat Indonesia dari Sabang sampai Merauke.
+
+Setiap sila memuat nilai-nilai luhur kepribadian bangsa yang saling terhubung satu sama lain menjadi sebuah kesatuan yang utuh.</textarea>
+            
+            <div class="flex items-center justify-between mt-1.5 text-[11px] text-slate-500">
+              <span id="charCountLabel">0 karakter | 0 kata</span>
+              <button id="clearTextBtn" class="text-slate-400 hover:text-red-500 transition">Hapus Teks</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. ALIGNMENT & LINE HEIGHT TUNING -->
+        <div class="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80">
+          <div class="flex items-center justify-between mb-3">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <i class="ph-bold ph-sliders-horizontal text-blue-600"></i> 4. Kalibrasi Posisi & Baris
+            </label>
+            <button id="resetCalibrationBtn" class="text-[11px] text-slate-400 hover:text-slate-600" title="Reset ke default">Reset</button>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <!-- Sub-Panel A: Margin & Posisi Header (Terpisah) -->
+            <div class="bg-amber-50/70 p-3 rounded-lg border border-amber-200 space-y-2.5">
+              <div class="flex items-center justify-between font-bold text-amber-950 pb-1.5 border-b border-amber-200/70">
+                <span class="flex items-center gap-1.5 text-xs">
+                  <i class="ph-bold ph-identification-card text-amber-700"></i> Margin & Posisi Header (Nama/Tgl)
+                </span>
+                <span class="text-[10px] font-medium text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">Khusus Header</span>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <div class="flex justify-between text-slate-600 mb-1">
+                    <span class="text-[11px]">Margin Atas Header</span>
+                    <span id="headerMarginTopVal" class="font-semibold text-amber-800">95px</span>
+                  </div>
+                  <input type="range" id="headerMarginTopSlider" min="10" max="400" step="1" value="95" class="w-full accent-amber-600 cursor-pointer">
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-600 mb-1">
+                    <span class="text-[11px]">Margin Kiri Header</span>
+                    <span id="headerMarginLeftVal" class="font-semibold text-amber-800">130px</span>
+                  </div>
+                  <input type="range" id="headerMarginLeftSlider" min="10" max="400" step="1" value="130" class="w-full accent-amber-600 cursor-pointer">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2.5 pt-0.5">
+                <div>
+                  <div class="flex justify-between text-slate-600 mb-1">
+                    <span class="text-[11px]">Jarak Baris Header</span>
+                    <span id="headerLineHeightVal" class="font-semibold text-amber-800">40px</span>
+                  </div>
+                  <input type="range" id="headerLineHeightSlider" min="20" max="80" step="1" value="40" class="w-full accent-amber-600 cursor-pointer">
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-600 mb-1">
+                    <span class="text-[11px]">Ukuran Font Header</span>
+                    <span id="headerFontSizeVal" class="font-semibold text-amber-800">24px</span>
+                  </div>
+                  <input type="range" id="headerFontSizeSlider" min="14" max="48" step="1" value="24" class="w-full accent-amber-600 cursor-pointer">
+                </div>
+              </div>
+            </div>
+
+            <!-- Sub-Panel B: Margin & Baris Isi Tulisan -->
+            <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-200/80 space-y-2.5">
+              <div class="flex items-center justify-between font-bold text-blue-950 pb-1.5 border-b border-blue-200/60">
+                <span class="flex items-center gap-1.5 text-xs">
+                  <i class="ph-bold ph-text-align-left text-blue-700"></i> Margin & Baris Isi Tulisan
+                </span>
+                <span class="text-[10px] font-medium text-blue-800 bg-blue-100 px-1.5 py-0.5 rounded">Isi Tulisan</span>
+              </div>
+
+              <!-- Line Height Isi -->
+              <div>
+                <div class="flex justify-between font-semibold text-blue-950 mb-1">
+                  <span class="flex items-center gap-1 text-[11px]">
+                    <i class="ph-bold ph-arrows-down-up text-blue-600"></i> Jarak Baris Isi (Line Height)
+                  </span>
+                  <span id="lineHeightVal" class="text-blue-700">46px</span>
+                </div>
+                <input type="range" id="lineHeightSlider" min="20" max="100" step="0.5" value="46" class="w-full accent-blue-600 cursor-pointer">
+                <p class="text-[10px] text-blue-700/80 mt-0.5">Atur agar baris tulisan pas jatuh di atas garis buku tulis</p>
+              </div>
+
+              <!-- Font Size Isi -->
+              <div>
+                <div class="flex justify-between text-slate-600 mb-1">
+                  <span class="text-[11px]">Ukuran Font Isi (Size)</span>
+                  <span id="fontSizeVal" class="font-semibold text-slate-800">26px</span>
+                </div>
+                <input type="range" id="fontSizeSlider" min="14" max="60" step="1" value="26" class="w-full accent-blue-600 cursor-pointer">
+              </div>
+
+              <!-- Margin Top Isi (Starting line) -->
+              <div>
+                <div class="flex justify-between text-slate-600 mb-1">
+                  <span class="text-[11px]">Margin Atas Isi (Baris Pertama Tulisan)</span>
+                  <span id="marginTopVal" class="font-semibold text-slate-800">145px</span>
+                </div>
+                <input type="range" id="marginTopSlider" min="20" max="500" step="1" value="145" class="w-full accent-blue-600 cursor-pointer">
+              </div>
+
+              <!-- Margin Left & Right Isi -->
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <div class="flex justify-between text-slate-600 mb-1">
+                    <span class="text-[11px]">Margin Kiri Isi</span>
+                    <span id="marginLeftVal" class="font-semibold text-slate-800">130px</span>
+                  </div>
+                  <input type="range" id="marginLeftSlider" min="20" max="400" step="1" value="130" class="w-full accent-blue-600 cursor-pointer">
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-600 mb-1">
+                    <span class="text-[11px]">Margin Kanan Isi</span>
+                    <span id="marginRightVal" class="font-semibold text-slate-800">80px</span>
+                  </div>
+                  <input type="range" id="marginRightSlider" min="20" max="400" step="1" value="80" class="w-full accent-blue-600 cursor-pointer">
+                </div>
+              </div>
+
+              <!-- Letter Spacing & Slant Isi -->
+              <div class="grid grid-cols-2 gap-2.5 pt-0.5">
+                <div>
+                  <div class="flex justify-between text-slate-600 mb-1">
+                    <span class="text-[11px]">Jarak Huruf</span>
+                    <span id="letterSpacingVal" class="font-semibold text-slate-800">0px</span>
+                  </div>
+                  <input type="range" id="letterSpacingSlider" min="-4" max="10" step="0.5" value="0" class="w-full accent-blue-600 cursor-pointer">
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-600 mb-1">
+                    <span class="text-[11px]">Kemiringan (Slant)</span>
+                    <span id="slantVal" class="font-semibold text-slate-800">0°</span>
+                  </div>
+                  <input type="range" id="slantSlider" min="-8" max="8" step="0.5" value="0" class="w-full accent-blue-600 cursor-pointer">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. INK & REALISM SETTINGS -->
+        <div class="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80">
+          <div class="flex items-center justify-between mb-3">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <i class="ph-bold ph-drop text-blue-600"></i> 5. Tinta Pulpen & Efek Realistis
+            </label>
+          </div>
+
+          <!-- Ink Color Presets -->
+          <div class="mb-3">
+            <span class="text-[11px] text-slate-500 font-medium mb-1.5 block">Warna Tinta:</span>
+            <div class="flex items-center gap-2 flex-wrap" id="inkColorContainer">
+              <button type="button" data-color="#1e293b" data-opacity="0.94" class="ink-btn active w-7 h-7 rounded-full bg-slate-800 border-2 border-white shadow-sm ring-2 ring-blue-500 transition" title="Hitam Gel"></button>
+              <button type="button" data-color="#1e40af" data-opacity="0.92" class="ink-btn w-7 h-7 rounded-full bg-blue-800 border-2 border-white shadow-sm ring-0 transition" title="Biru Standar (Pulpen)"></button>
+              <button type="button" data-color="#1d4ed8" data-opacity="0.90" class="ink-btn w-7 h-7 rounded-full bg-blue-600 border-2 border-white shadow-sm ring-0 transition" title="Biru Gel Cerah"></button>
+              <button type="button" data-color="#0f172a" data-opacity="0.97" class="ink-btn w-7 h-7 rounded-full bg-slate-950 border-2 border-white shadow-sm ring-0 transition" title="Hitam Pekat"></button>
+              <button type="button" data-color="#991b1b" data-opacity="0.90" class="ink-btn w-7 h-7 rounded-full bg-red-800 border-2 border-white shadow-sm ring-0 transition" title="Merah Koreksi"></button>
+              <button type="button" data-color="#475569" data-opacity="0.85" class="ink-btn w-7 h-7 rounded-full bg-slate-600 border-2 border-white shadow-sm ring-0 transition" title="Pensil Grafit 2B"></button>
+              
+              <!-- Custom color input -->
+              <label class="w-7 h-7 rounded-full border border-slate-300 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition relative overflow-hidden" title="Warna Custom">
+                <input type="color" id="customColorPicker" value="#1e293b" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer">
+                <i class="ph-bold ph-palette text-xs text-slate-600"></i>
+              </label>
+            </div>
+          </div>
+
+          <!-- Realism Sliders -->
+          <div class="space-y-3 text-xs">
+            <!-- Natural Jitter -->
+            <div>
+              <div class="flex justify-between text-slate-600 mb-1">
+                <span class="flex items-center gap-1">
+                  <span>Variasi Alami (Jitter)</span>
+                  <span class="custom-tooltip-wrap">
+                    <button type="button" class="tooltip-trigger" aria-label="Informasi">
+                      <i class="ph-bold ph-info text-xs"></i>
+                    </button>
+                    <span class="custom-tooltip-popup">
+                      Membuat posisi, ukuran, dan rotasi huruf sedikit bervariasi secara acak agar seperti tulisan tangan manusia asli.
+                    </span>
+                  </span>
+                </span>
+                <span id="jitterVal" class="font-semibold text-slate-800">Sedang</span>
+              </div>
+              <input type="range" id="jitterSlider" min="0" max="5" step="0.5" value="2" class="w-full accent-blue-600 cursor-pointer">
+            </div>
+
+            <!-- Ink Opacity / Bleed -->
+            <div>
+              <div class="flex justify-between text-slate-600 mb-1">
+                <span>Kepekatan Tinta</span>
+                <span id="inkOpacityVal" class="font-semibold text-slate-800">92%</span>
+              </div>
+              <input type="range" id="inkOpacitySlider" min="60" max="100" step="1" value="92" class="w-full accent-blue-600 cursor-pointer">
+            </div>
+
+            <!-- Blend Mode Checkbox -->
+            <div class="flex items-center justify-between pt-1">
+              <label for="blendModeToggle" class="cursor-pointer select-none text-slate-700 font-medium flex items-center gap-2">
+                <input type="checkbox" id="blendModeToggle" checked class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
+                <span>Efek Resap Tinta (Multiply Blend)</span>
+              </label>
+              <span class="text-[10px] text-slate-400">Garis tembus tinta</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. CAMERA FILTER & CAMSCANNER (ANTI-CURIGA DOSEN) -->
+        <div class="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <i class="ph-bold ph-camera text-blue-600"></i> 6. Filter Kamera & Scanner
+            </label>
+            <span class="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+              <i class="ph-bold ph-shield-check"></i> Anti-Curiga
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500 mb-3 leading-relaxed">
+            Beri sentuhan foto kamera HP di meja belajar atau hasil scan dokumen agar terlihat seperti tugas asli hasil foto/scan.
+          </p>
+
+          <!-- Filter Presets -->
+          <div class="mb-3">
+            <span class="text-[11px] text-slate-600 font-medium mb-1.5 block">Preset Efek:</span>
+            <div class="grid grid-cols-2 gap-1.5 text-xs font-medium" id="cameraFilterPresets">
+              <button type="button" data-filter="none" class="camera-filter-btn active flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition shadow-2xs">
+                <i class="ph-bold ph-prohibit text-slate-400"></i> Bersih (Default)
+              </button>
+              <button type="button" data-filter="camscanner" class="camera-filter-btn flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition shadow-2xs">
+                <i class="ph-bold ph-scan text-blue-600"></i> CamScanner
+              </button>
+              <button type="button" data-filter="desk_photo" class="camera-filter-btn flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition shadow-2xs">
+                <i class="ph-bold ph-camera text-slate-700"></i> Foto Meja HP
+              </button>
+              <button type="button" data-filter="warm_lamp" class="camera-filter-btn flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition shadow-2xs">
+                <i class="ph-bold ph-lightbulb text-amber-500"></i> Lampu Belajar
+              </button>
+              <button type="button" data-filter="daylight" class="camera-filter-btn flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition shadow-2xs">
+                <i class="ph-bold ph-sun text-amber-500"></i> Cahaya Jendela
+              </button>
+              <button type="button" data-filter="scanner_bw" class="camera-filter-btn flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition shadow-2xs">
+                <i class="ph-bold ph-printer text-slate-600"></i> Scan Fotokopi B/W
+              </button>
+            </div>
+          </div>
+
+          <!-- Fine-Tuning Controls -->
+          <div class="space-y-3 text-xs border-t border-slate-200/80 pt-3">
+            <!-- Shadow Intensity -->
+            <div>
+              <div class="flex justify-between text-slate-600 mb-1">
+                <span class="flex items-center gap-1">
+                  <span>Bayangan HP / Meja</span>
+                  <span class="custom-tooltip-wrap">
+                    <button type="button" class="tooltip-trigger" aria-label="Informasi">
+                      <i class="ph-bold ph-info text-xs"></i>
+                    </button>
+                    <span class="custom-tooltip-popup">
+                      Efek bayangan halus siluet ponsel dan tangan saat memotret kertas dari atas meja belajar.
+                    </span>
+                  </span>
+                </span>
+                <span id="filterShadowVal" class="font-semibold text-slate-800">25%</span>
+              </div>
+              <input type="range" id="filterShadowSlider" min="0" max="60" step="5" value="25" class="w-full accent-blue-600 cursor-pointer">
+            </div>
+
+            <!-- Sensor Grain / Noise -->
+            <div>
+              <div class="flex justify-between text-slate-600 mb-1">
+                <span class="flex items-center gap-1">
+                  <span>Noise Sensor Kamera</span>
+                  <span class="custom-tooltip-wrap">
+                    <button type="button" class="tooltip-trigger" aria-label="Informasi">
+                      <i class="ph-bold ph-info text-xs"></i>
+                    </button>
+                    <span class="custom-tooltip-popup">
+                      Tekstur bintik mikro halus khas sensor ISO kamera HP dalam ruangan agar gambar tidak terlalu mulus digital.
+                    </span>
+                  </span>
+                </span>
+                <span id="filterNoiseVal" class="font-semibold text-slate-800">15%</span>
+              </div>
+              <input type="range" id="filterNoiseSlider" min="0" max="50" step="5" value="15" class="w-full accent-blue-600 cursor-pointer">
+            </div>
+
+            <!-- Baseline Drift / Gelombang Tulisan Manusia -->
+            <div>
+              <div class="flex justify-between text-slate-600 mb-1">
+                <span class="flex items-center gap-1">
+                  <span>Gelombang Garis Alami</span>
+                  <span class="custom-tooltip-wrap">
+                    <button type="button" class="tooltip-trigger" aria-label="Informasi">
+                      <i class="ph-bold ph-info text-xs"></i>
+                    </button>
+                    <span class="custom-tooltip-popup">
+                      Tulisan tangan manusia sedikit meliuk alami melintasi kertas mengikuti pergelangan tangan, bukan garis lurus kaku mistar komputer.
+                    </span>
+                  </span>
+                </span>
+                <span id="filterWaveVal" class="font-semibold text-slate-800">0.8 px</span>
+              </div>
+              <input type="range" id="filterWaveSlider" min="0" max="3" step="0.2" value="0.8" class="w-full accent-blue-600 cursor-pointer">
+            </div>
+
+            <!-- Paper Fold / Crease Toggle -->
+            <div class="flex items-center justify-between pt-1">
+              <label for="filterFoldToggle" class="cursor-pointer select-none text-slate-700 font-medium flex items-center gap-2">
+                <input type="checkbox" id="filterFoldToggle" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
+                <span>Bekas Lipatan Kertas (Crease)</span>
+              </label>
+              <span class="text-[10px] text-slate-400">Lipatan tengah</span>
+            </div>
+
+            <!-- CamScanner Authentic Watermark Toggle -->
+            <div class="flex items-center justify-between pt-1 border-t border-slate-200/60">
+              <label for="camScannerWatermarkToggle" class="cursor-pointer select-none text-slate-700 font-medium flex items-center gap-2" title="Tampilkan cap khas CamScanner di pojok kanan bawah agar seperti hasil scan HP asli">
+                <input type="checkbox" id="camScannerWatermarkToggle" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
+                <span>Watermark CamScanner</span>
+              </label>
+              <span class="text-[10px] text-slate-400">Pojok bawah</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </aside>
+
+    <!-- Right Live Canvas Viewport (Continuous Vertical Multi-Page Word Style) -->
+    <section id="previewPanel" class="flex-1 bg-slate-200/70 overflow-y-auto overflow-x-auto relative custom-scrollbar hidden lg:block select-none h-full max-h-full min-h-0 min-w-0">
+      
+      <div class="preview-inner-wrapper">
+        <!-- Top Document Navigation Bar (Word Style) -->
+        <div id="paginationBar" class="mb-4 bg-white/95 backdrop-blur-xs px-4 py-2.5 rounded-xl shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-700 sticky top-0 z-30 w-full max-w-4xl transition-all">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold border border-blue-200 flex items-center gap-1.5 text-xs shadow-2xs">
+              <i class="ph-bold ph-files"></i> <span id="pageIndicator">1 Halaman</span>
+            </span>
+            <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+            <!-- Page Jump Pills (Klik untuk langsung loncat ke halaman tsb) -->
+            <div id="pageJumpContainer" class="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-[280px] sm:max-w-md py-0.5">
+              <!-- Dynamically populated with pills: Hal 1, Hal 2, etc. -->
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="downloadPdfBtn" class="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1.5 active:scale-95" title="Gabungkan semua halaman menjadi 1 file PDF siap kumpul tugas">
+              <i class="ph-bold ph-file-pdf"></i>
+              <span>Download PDF (Tugas)</span>
+            </button>
+            <button id="downloadAllPagesBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1.5 active:scale-95" title="Unduh semua halaman dalam format gambar PNG">
+              <i class="ph-bold ph-download-simple"></i>
+              <span>Unduh Semua PNG</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Vertically Stacked Continuous Pages Container (Word / Google Docs Style) -->
+        <div id="documentPagesContainer" class="flex flex-col items-center gap-8 w-full">
+          <!-- Dynamically populated page cards -->
+        </div>
+
+        <!-- Hidden canvas viewport for measurement & fallback -->
+        <div id="canvasViewport" class="hidden">
+          <canvas id="renderCanvas"></canvas>
+        </div>
+
+        <!-- Floating helper note at bottom of preview -->
+        <div class="mt-8 text-center text-xs text-slate-500 select-none pb-12">
+          <p>💡 <b>Mode Dokumen Bersambung:</b> Halaman selanjutnya otomatis terlihat di bawah seperti di Microsoft Word tanpa perlu klik tombol.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== STUDIO PEMBUAT FONT MODAL ==================== -->
+  <div id="fontStudioModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Studio Header -->
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-base shadow-sm">
+            <i class="ph-bold ph-pencil-line"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-slate-900 text-sm sm:text-base leading-tight">Studio Pembuat Font Tulis Tangan</h2>
+            <p class="text-[11px] text-slate-500">Gambar huruf tulisan tangan Anda sendiri (mouse, stylus, atau layar sentuh)</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span id="studioProgressBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+            0 / 62 Huruf Digambar
+          </span>
+          <button type="button" id="closeFontStudioBtn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition">
+            <i class="ph-bold ph-x text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Studio Body -->
+      <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Left: Character Category & Selector Grid -->
+        <div class="w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-slate-50/40 p-3 overflow-y-auto custom-scrollbar max-h-44 md:max-h-none">
+          
+          <!-- Category Tabs -->
+          <div class="flex items-center gap-1 mb-2.5 bg-slate-200/70 p-0.5 rounded-lg text-xs font-medium" id="studioCategoryTabs">
+            <button type="button" data-cat="lower" class="studio-cat-btn active flex-1 py-1 px-1 rounded-md text-center bg-white text-blue-700 font-semibold shadow-2xs transition">a-z</button>
+            <button type="button" data-cat="upper" class="studio-cat-btn flex-1 py-1 px-1 rounded-md text-center text-slate-600 hover:text-slate-900 transition">A-Z</button>
+            <button type="button" data-cat="numbers" class="studio-cat-btn flex-1 py-1 px-1 rounded-md text-center text-slate-600 hover:text-slate-900 transition">0-9</button>
+            <button type="button" data-cat="punct" class="studio-cat-btn flex-1 py-1 px-1 rounded-md text-center text-slate-600 hover:text-slate-900 transition">Tanda</button>
+            <button type="button" data-cat="math" class="studio-cat-btn flex-1 py-1 px-1 rounded-md text-center text-amber-700 hover:text-amber-900 font-bold transition">MTK ±</button>
+          </div>
+
+          <!-- Character Grid -->
+          <div id="studioCharGrid" class="grid grid-cols-6 md:grid-cols-5 gap-1.5 flex-1">
+            <!-- Rendered dynamically by app.js -->
+          </div>
+
+          <!-- Helper indicator -->
+          <div class="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+            <span class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Sudah digambar
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-slate-300 inline-block"></span> Belum
+            </span>
+          </div>
+        </div>
+
+        <!-- Right: Drawing Canvas Area -->
+        <div class="flex-1 flex flex-col p-4 bg-white items-center justify-between overflow-y-auto custom-scrollbar">
+          
+          <!-- Active Character Info Header -->
+          <div class="w-full flex items-center justify-between mb-2">
+            <div>
+              <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Karakter Saat Ini:</span>
+              <div class="flex items-center gap-2">
+                <span id="activeCharDisplay" class="text-2xl font-bold text-slate-900 font-mono">a</span>
+                <span id="activeCharHint" class="text-xs text-slate-500">Tulis huruf kecil 'a' di dalam kotak kanvas</span>
+              </div>
+            </div>
+
+            <!-- Previous / Next Char quick navigation -->
+            <div class="flex items-center gap-1">
+              <button type="button" id="prevCharBtn" class="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition" title="Karakter Sebelumnya">
+                <i class="ph-bold ph-caret-left"></i>
+              </button>
+              <button type="button" id="nextCharBtn" class="px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-xs font-semibold flex items-center gap-1 transition" title="Karakter Selanjutnya">
+                <span>Lanjut</span> <i class="ph-bold ph-caret-right"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Guide Explainer Bar -->
+          <div id="charGuideBar" class="w-full max-w-[340px] mb-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-between text-xs transition-all">
+            <span id="charTypeBadge" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] uppercase tracking-wide shrink-0">Panduan</span>
+            <span id="charGuideInstruction" class="text-blue-950 font-medium text-[11px] text-right truncate ml-2">Tulis huruf mengikuti garis anatomi</span>
+          </div>
+
+          <!-- Drawing Canvas Wrapper -->
+          <div class="relative flex flex-col items-center justify-center my-auto w-full">
+            <!-- Canvas with border & guides -->
+            <div class="relative border-2 border-slate-300 rounded-xl overflow-hidden bg-white shadow-inner select-none touch-none w-[min(320px,82vw)] h-[min(320px,82vw)] flex items-center justify-center">
+              <canvas id="glyphCanvas" width="320" height="320" class="cursor-crosshair block w-full h-full"></canvas>
+            </div>
+
+            <!-- Guidelines legend below canvas -->
+            <div class="flex items-center justify-center gap-6 mt-3 text-xs font-semibold text-slate-700">
+              <span class="flex items-center gap-1.5 text-slate-700"><span class="w-3.5 h-1 rounded bg-slate-600 inline-block"></span> Garis Atas</span>
+              <span class="flex items-center gap-1.5 text-blue-700"><span class="w-3.5 h-1 rounded bg-blue-600 inline-block"></span> Garis Pijakan</span>
+            </div>
+          </div>
+
+          <!-- Drawing Action Bar -->
+          <div class="w-full mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+            <!-- Pen width control -->
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500 font-medium">Tebal Pena:</span>
+              <input type="range" id="penWidthSlider" min="6" max="24" step="2" value="12" class="w-20 accent-blue-600">
+              <span id="penWidthVal" class="text-xs font-semibold text-slate-700">12px</span>
+            </div>
+
+            <!-- Undo & Clear buttons -->
+            <div class="flex items-center gap-2">
+              <button type="button" id="undoStrokeBtn" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium transition" title="Urungkan coretan terakhir">
+                <i class="ph-bold ph-arrow-u-up-left"></i> Undo
+              </button>
+              <button type="button" id="clearGlyphBtn" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition" title="Hapus seluruh huruf ini">
+                <i class="ph-bold ph-trash"></i> Hapus
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Studio Footer -->
+      <div class="px-5 py-3.5 border-t border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <!-- Font name input & Fallback toggle -->
+        <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div class="flex items-center gap-1.5">
+            <label for="studioFontNameInput" class="text-xs text-slate-600 font-medium">Nama Font:</label>
+            <input type="text" id="studioFontNameInput" value="Font-Tulisanku" class="px-2.5 py-1 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:outline-none w-36 font-semibold">
+          </div>
+
+          <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+            <input type="checkbox" id="studioSmartFallbackToggle" checked class="w-3.5 h-3.5 text-blue-600 rounded">
+            <span>Isi otomatis huruf yang belum digambar</span>
+          </label>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button type="button" id="downloadTtfBtn" class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 hover:bg-white text-slate-700 text-xs font-semibold transition" title="Simpan file .TTF ke perangkat">
+            <i class="ph-bold ph-download-simple"></i>
+            <span>Unduh .TTF</span>
+          </button>
+          <button type="button" id="applyStudioFontBtn" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition active:scale-95">
+            <i class="ph-bold ph-check-circle text-sm"></i>
+            <span>Terapkan ke Kertas</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
