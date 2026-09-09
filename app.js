@@ -265,20 +265,36 @@ async function restoreAssetsFromDB() {
   try {
     const savedFont = await getAssetFromDB('custom_font');
     if (savedFont && savedFont.buffer) {
-      const fontFace = new FontFace(savedFont.fontFamily, savedFont.buffer);
-      const loaded = await fontFace.load();
-      document.fonts.add(loaded);
+      let isOldDotFont = false;
+      if (window.opentype) {
+        try {
+          const parsed = opentype.parse(savedFont.buffer.slice(0));
+          const glyphs = Object.values(parsed.glyphs.glyphs || {});
+          const userDrawn = glyphs.filter(g => g.unicode && g.unicode > 32 && g.path && g.path.commands && g.path.commands.length > 0);
+          if (userDrawn.length > 0 && userDrawn.every(g => g.path.commands.length === 9 || (g.path.commands.length % 9 === 0 && g.path.commands.length <= 27))) {
+            isOldDotFont = true;
+          }
+        } catch (_) {}
+      }
 
-      state.font.family = savedFont.fontFamily;
-      state.font.isCustom = true;
-      state.font.customFontName = savedFont.name;
+      if (isOldDotFont) {
+        await deleteAssetFromDB('custom_font');
+      } else {
+        const fontFace = new FontFace(savedFont.fontFamily, savedFont.buffer);
+        const loaded = await fontFace.load();
+        document.fonts.add(loaded);
 
-      fontStatusBadge.textContent = 'Font Kustom Aktif';
-      fontStatusBadge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200';
-      savedFontLabel.textContent = savedFont.name;
-      fontStorageInfo.classList.remove('hidden');
+        state.font.family = savedFont.fontFamily;
+        state.font.isCustom = true;
+        state.font.customFontName = savedFont.name;
 
-      fontPresetContainer.querySelectorAll('.font-preset-btn').forEach(b => b.classList.remove('active'));
+        fontStatusBadge.textContent = 'Font Kustom Aktif';
+        fontStatusBadge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200';
+        savedFontLabel.textContent = savedFont.name;
+        fontStorageInfo.classList.remove('hidden');
+
+        fontPresetContainer.querySelectorAll('.font-preset-btn').forEach(b => b.classList.remove('active'));
+      }
     }
   } catch (err) {
     console.warn('Gagal restore custom font:', err);
@@ -1497,29 +1513,64 @@ function setupEventListeners() {
   // Mobile View Switcher (Controls vs Preview di HP)
   const mobileTabControls = document.getElementById('mobileTabControls');
   const mobileTabPreview = document.getElementById('mobileTabPreview');
+  const mobileFloatingToggleBtn = document.getElementById('mobileFloatingToggleBtn');
+  const mobileFloatingIcon = document.getElementById('mobileFloatingIcon');
+  const mobileFloatingText = document.getElementById('mobileFloatingText');
   const controlsPanel = document.getElementById('controlsPanel');
   const previewPanel = document.getElementById('previewPanel');
 
-  if (mobileTabControls && mobileTabPreview && controlsPanel && previewPanel) {
-    mobileTabControls.addEventListener('click', () => {
-      controlsPanel.classList.remove('hidden');
-      previewPanel.classList.add('hidden');
-      previewPanel.classList.remove('block');
-      mobileTabControls.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-xs text-center flex items-center justify-center gap-1.5 transition';
-      mobileTabPreview.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-center flex items-center justify-center gap-1.5 transition';
-    });
-
-    mobileTabPreview.addEventListener('click', () => {
-      controlsPanel.classList.add('hidden');
-      previewPanel.classList.remove('hidden');
-      previewPanel.classList.add('block');
-      mobileTabPreview.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-xs text-center flex items-center justify-center gap-1.5 transition';
-      mobileTabControls.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-center flex items-center justify-center gap-1.5 transition';
+  function setMobileView(view) {
+    const isPreview = (view === 'preview');
+    if (isPreview) {
+      if (controlsPanel) controlsPanel.classList.add('hidden');
       if (previewPanel) {
+        previewPanel.classList.remove('hidden');
+        previewPanel.classList.add('block');
         previewPanel.scrollLeft = 0;
         previewPanel.scrollTop = 0;
       }
+      if (mobileTabPreview) {
+        mobileTabPreview.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-xs text-center flex items-center justify-center gap-1.5 transition';
+      }
+      if (mobileTabControls) {
+        mobileTabControls.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-center flex items-center justify-center gap-1.5 transition';
+      }
+      if (mobileFloatingToggleBtn && mobileFloatingIcon && mobileFloatingText) {
+        mobileFloatingIcon.className = 'ph-bold ph-pencil-simple text-base';
+        mobileFloatingText.textContent = 'Edit Teks & Gaya';
+        mobileFloatingToggleBtn.className = 'lg:hidden fixed bottom-5 right-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-semibold text-xs shadow-lg shadow-slate-900/35 border border-slate-700 transition-all cursor-pointer select-none';
+      }
       fitCanvasToScreen();
+    } else {
+      if (controlsPanel) controlsPanel.classList.remove('hidden');
+      if (previewPanel) {
+        previewPanel.classList.add('hidden');
+        previewPanel.classList.remove('block');
+      }
+      if (mobileTabControls) {
+        mobileTabControls.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-xs text-center flex items-center justify-center gap-1.5 transition';
+      }
+      if (mobileTabPreview) {
+        mobileTabPreview.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-center flex items-center justify-center gap-1.5 transition';
+      }
+      if (mobileFloatingToggleBtn && mobileFloatingIcon && mobileFloatingText) {
+        mobileFloatingIcon.className = 'ph-bold ph-eye text-base';
+        mobileFloatingText.textContent = 'Lihat Hasil Kertas';
+        mobileFloatingToggleBtn.className = 'lg:hidden fixed bottom-5 right-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold text-xs shadow-lg shadow-blue-600/35 border border-blue-400/30 transition-all cursor-pointer select-none';
+      }
+    }
+  }
+
+  if (mobileTabControls) {
+    mobileTabControls.addEventListener('click', () => setMobileView('controls'));
+  }
+  if (mobileTabPreview) {
+    mobileTabPreview.addEventListener('click', () => setMobileView('preview'));
+  }
+  if (mobileFloatingToggleBtn) {
+    mobileFloatingToggleBtn.addEventListener('click', () => {
+      const isCurrentlyPreview = previewPanel && !previewPanel.classList.contains('hidden');
+      setMobileView(isCurrentlyPreview ? 'controls' : 'preview');
     });
   }
 
@@ -2182,6 +2233,20 @@ async function handleFontUpload(event) {
   try {
     const fontName = 'CustomHandwrittenFont_' + Date.now();
     const arrayBuffer = await file.arrayBuffer();
+
+    // Periksa apakah file yang diupload adalah file lama yang terkena bug titik-titik
+    if (window.opentype) {
+      try {
+        const parsed = opentype.parse(arrayBuffer.slice(0));
+        const glyphs = Object.values(parsed.glyphs.glyphs || {});
+        const userDrawnGlyphs = glyphs.filter(g => g.unicode && g.unicode > 32 && g.path && g.path.commands && g.path.commands.length > 0);
+        const isDotBug = userDrawnGlyphs.length > 0 && userDrawnGlyphs.every(g => g.path.commands.length === 9 || (g.path.commands.length % 9 === 0 && g.path.commands.length <= 27));
+        if (isDotBug) {
+          alert('⚠️ PERHATIAN:\n\nFile "' + file.name + '" yang Anda pilih ini adalah file .TTF lama yang diunduh SEBELUM bug titik-titik diperbaiki (isi berkas di komputer Anda memang masih berupa titik).\n\nKABAR BAIK:\nCoretan asli tulisan tangan Anda masih tersimpan aman di aplikasi ini!\n\nSilakan klik tombol "Studio Font", lalu klik tombol "Terapkan ke Kertas" atau "Simpan File .TTF" untuk langsung menghasilkan dan menyimpan berkas font yang baru & normal.');
+        }
+      } catch (_) {}
+    }
+
     const fontFace = new FontFace(fontName, arrayBuffer);
     
     fontStatusBadge.textContent = 'Memuat Font...';
@@ -2499,13 +2564,14 @@ const STUDIO_CHAR_SETS = {
 };
 
 function getAllStudioChars() {
-  return [
+  const combined = [
     ...STUDIO_CHAR_SETS.lower,
     ...STUDIO_CHAR_SETS.upper,
     ...STUDIO_CHAR_SETS.numbers,
     ...STUDIO_CHAR_SETS.punct,
     ...STUDIO_CHAR_SETS.math
   ];
+  return Array.from(new Set(combined));
 }
 
 const CHAR_DESCRIPTIONS = {
@@ -2691,6 +2757,49 @@ function initFontStudio() {
   // Export & Apply
   if (applyStudioFontBtn) applyStudioFontBtn.addEventListener('click', handleApplyStudioFont);
   if (downloadTtfBtn) downloadTtfBtn.addEventListener('click', handleDownloadTtf);
+
+  // Jika pengguna sudah memiliki gambar karakter di Studio Font,
+  // kompilasi otomatis versi terbaru agar pengguna langsung melihat hasil tulisan tangannya (bukan titik-titik lama)
+  try {
+    const allChars = getAllStudioChars();
+    const hasAnyDrawn = allChars.some(c => hasGlyph(c));
+    if (hasAnyDrawn && (!state.font.isCustom || state.font.family.includes('Font-Tulisanku') || state.font.family.includes('TulisanKu-Font') || state.font.family === 'Indie Flower')) {
+      const baseName = (studioFontNameInput ? studioFontNameInput.value.trim() : '') || 'Font-Tulisanku';
+      const cleanName = baseName.replace(/\s+/g, '-');
+      const uniqueFamily = `${cleanName}_${Date.now()}`;
+      compileStudioFont(cleanName).then(async (arrayBuffer) => {
+        const fontFace = new FontFace(uniqueFamily, arrayBuffer);
+        const loadedFont = await fontFace.load();
+
+        Array.from(document.fonts).forEach(f => {
+          if (f.family.startsWith(cleanName) || f.family.startsWith('CustomHandwrittenFont_')) {
+            document.fonts.delete(f);
+          }
+        });
+
+        document.fonts.add(loadedFont);
+        await saveAssetToDB('custom_font', {
+          name: `${cleanName}.ttf`,
+          fontFamily: uniqueFamily,
+          isStudioFont: true,
+          buffer: arrayBuffer,
+          date: Date.now()
+        });
+        state.font.family = uniqueFamily;
+        state.font.isCustom = true;
+        state.font.customFontName = `${cleanName}.ttf`;
+        fontStatusBadge.textContent = 'Font Studio Aktif';
+        fontStatusBadge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200';
+        savedFontLabel.textContent = `${cleanName}.ttf`;
+        fontStorageInfo.classList.remove('hidden');
+        fontPresetContainer.querySelectorAll('.font-preset-btn').forEach(b => b.classList.remove('active'));
+        paginateText();
+        render();
+      }).catch(err => console.warn('Auto-refresh studio font skipped:', err));
+    }
+  } catch (e) {
+    console.warn('Auto-refresh studio font check:', e);
+  }
 }
 
 function openStudio() {
@@ -3095,7 +3204,7 @@ function clearCurrentGlyph() {
 
 function strokesToOpentypePath(strokes, penWidth) {
   const path = new opentype.Path();
-  if (!strokes || strokes.length === 0) return { path, minX: 0, maxX: 0 };
+  if (!strokes || strokes.length === 0) return { path, minX: 0, maxX: 0, advanceWidth: 350 };
 
   const S = 4.1;
   const radius = (penWidth / 2) * S;
@@ -3103,25 +3212,57 @@ function strokesToOpentypePath(strokes, penWidth) {
   let overallMinX = Infinity;
   let overallMaxX = -Infinity;
 
+  // 1. Kumpulkan semua titik per coretan dan tentukan batas bounding box horizontal
+  const processedStrokes = [];
   strokes.forEach(stroke => {
+    if (!stroke || stroke.length === 0) return;
     const pts = [];
+    let lastPt = null;
     stroke.forEach(pt => {
-      const last = pts[pts.length - 1];
-      if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) > 1.5) {
+      // Filter titik yang terlalu berdekatan (kurang dari 1px) agar tidak redundant
+      if (!lastPt || Math.hypot(pt.x - lastPt.x, pt.y - lastPt.y) > 1.0) {
         pts.push({
           fx: (pt.x - 40) * S,
           fy: (240 - pt.y) * S
         });
+        lastPt = pt;
       }
     });
 
-    if (pts.length === 0) return;
+    // Pastikan titik akhir coretan selalu disertakan
+    if (stroke.length > 1) {
+      const endPt = stroke[stroke.length - 1];
+      if (lastPt !== endPt) {
+        pts.push({
+          fx: (endPt.x - 40) * S,
+          fy: (240 - endPt.y) * S
+        });
+      }
+    }
 
-    pts.forEach(p => {
-      if (p.fx - radius < overallMinX) overallMinX = p.fx - radius;
-      if (p.fx + radius > overallMaxX) overallMaxX = p.fx + radius;
-    });
+    if (pts.length > 0) {
+      pts.forEach(p => {
+        if (p.fx - radius < overallMinX) overallMinX = p.fx - radius;
+        if (p.fx + radius > overallMaxX) overallMaxX = p.fx + radius;
+      });
+      processedStrokes.push(pts);
+    }
+  });
 
+  if (processedStrokes.length === 0) return { path, minX: 0, maxX: 0, advanceWidth: 350 };
+
+  // 2. Normalisasi posisi horizontal: selaraskan sisi kiri dengan Left Side Bearing (LSB)
+  const lsb = 60; // 60 unit font side bearing
+  const shiftX = lsb - overallMinX;
+  const glyphWidth = overallMaxX - overallMinX;
+  const advanceWidth = Math.max(240, Math.round(glyphWidth + lsb * 2));
+
+  // 3. Bangun kurva pita (ribbon contour) dengan ujung membulat (round caps)
+  processedStrokes.forEach(pts => {
+    // Geser titik horizontal agar huruf berada tepat di LSB
+    pts.forEach(p => { p.fx += shiftX; });
+
+    // Coretan titik tunggal (misal titik pada huruf 'i', 'j', tanda titik, dll.)
     if (pts.length === 1) {
       const p = pts[0];
       path.moveTo(p.fx + radius, p.fy);
@@ -3133,6 +3274,7 @@ function strokesToOpentypePath(strokes, penWidth) {
       return;
     }
 
+    // Hitung vektor normal per segmen
     const normals = [];
     for (let i = 0; i < pts.length - 1; i++) {
       const dx = pts[i + 1].fx - pts[i].fx;
@@ -3155,9 +3297,14 @@ function strokesToOpentypePath(strokes, penWidth) {
       } else {
         nx = (normals[i - 1].nx + normals[i].nx) / 2;
         ny = (normals[i - 1].ny + normals[i].ny) / 2;
-        const l = Math.hypot(nx, ny) || 1;
-        nx /= l;
-        ny /= l;
+        const l = Math.hypot(nx, ny);
+        if (l < 0.2) {
+          nx = normals[i - 1].nx;
+          ny = normals[i - 1].ny;
+        } else {
+          nx /= l;
+          ny /= l;
+        }
       }
 
       leftSide.push({ x: pts[i].fx + nx * radius, y: pts[i].fy + ny * radius });
@@ -3169,22 +3316,37 @@ function strokesToOpentypePath(strokes, penWidth) {
       path.lineTo(leftSide[i].x, leftSide[i].y);
     }
 
+    // Ujung akhir membulat (round cap)
     const pEnd = pts[pts.length - 1];
     const nEnd = normals[normals.length - 1];
-    path.lineTo(pEnd.fx + (nEnd.ny) * radius, pEnd.fy - (nEnd.nx) * radius);
+    const nEndAngle = Math.atan2(nEnd.ny, nEnd.nx);
+    for (let s = 1; s <= 3; s++) {
+      const a = nEndAngle - (s * Math.PI) / 4;
+      path.lineTo(pEnd.fx + Math.cos(a) * radius, pEnd.fy + Math.sin(a) * radius);
+    }
     path.lineTo(rightSide[rightSide.length - 1].x, rightSide[rightSide.length - 1].y);
 
     for (let i = rightSide.length - 2; i >= 0; i--) {
       path.lineTo(rightSide[i].x, rightSide[i].y);
     }
 
+    // Ujung awal membulat (round cap)
     const pStart = pts[0];
     const nStart = normals[0];
-    path.lineTo(pStart.fx - (nStart.ny) * radius, pStart.fy + (nStart.nx) * radius);
+    const nStartAngle = Math.atan2(-nStart.ny, -nStart.nx);
+    for (let s = 1; s <= 3; s++) {
+      const a = nStartAngle - (s * Math.PI) / 4;
+      path.lineTo(pStart.fx + Math.cos(a) * radius, pStart.fy + Math.sin(a) * radius);
+    }
     path.close();
   });
 
-  return { path, minX: overallMinX, maxX: overallMaxX };
+  return {
+    path,
+    minX: lsb,
+    maxX: lsb + glyphWidth,
+    advanceWidth
+  };
 }
 
 async function compileStudioFont(fontFamily) {
@@ -3192,8 +3354,9 @@ async function compileStudioFont(fontFamily) {
     throw new Error('Library opentype.js belum selesai dimuat. Periksa koneksi internet Anda.');
   }
 
-  const useFallback = studioSmartFallbackToggle.checked;
+  const useFallback = studioSmartFallbackToggle ? studioSmartFallbackToggle.checked : true;
   const glyphsList = [];
+  const seenUnicodes = new Set([0, 32, 160]);
 
   // 1. .notdef
   const notdefPath = new opentype.Path();
@@ -3209,10 +3372,16 @@ async function compileStudioFont(fontFamily) {
     path: notdefPath
   }));
 
-  // 2. Space
+  // 2. Space & Non-breaking space
   glyphsList.push(new opentype.Glyph({
     name: 'space',
     unicode: 32,
+    advanceWidth: 350,
+    path: new opentype.Path()
+  }));
+  glyphsList.push(new opentype.Glyph({
+    name: 'nbspace',
+    unicode: 160,
     advanceWidth: 350,
     path: new opentype.Path()
   }));
@@ -3222,16 +3391,17 @@ async function compileStudioFont(fontFamily) {
 
   allChars.forEach(char => {
     const code = char.charCodeAt(0);
+    if (seenUnicodes.has(code)) return;
+    seenUnicodes.add(code);
 
     if (hasGlyph(char)) {
       const strokes = studioState.glyphs[char];
-      const { path, minX, maxX } = strokesToOpentypePath(strokes, studioState.penWidth);
-      const width = Math.max(320, (maxX - minX) + 120);
+      const { path, advanceWidth } = strokesToOpentypePath(strokes, studioState.penWidth);
 
       glyphsList.push(new opentype.Glyph({
         name: char,
         unicode: code,
-        advanceWidth: Math.round(width),
+        advanceWidth: Math.round(advanceWidth),
         path: path
       }));
     } else if (useFallback && studioState.baseTemplateFont) {
@@ -3276,31 +3446,41 @@ async function compileStudioFont(fontFamily) {
 }
 
 async function handleApplyStudioFont() {
-  const fontName = (studioFontNameInput.value.trim() || 'TulisanKu-Font').replace(/\s+/g, '-');
+  const baseName = (studioFontNameInput.value.trim() || 'TulisanKu-Font').replace(/\s+/g, '-');
+  const uniqueFamily = `${baseName}_${Date.now()}`;
   applyStudioFontBtn.disabled = true;
   applyStudioFontBtn.textContent = 'Mengompilasi Font...';
 
   try {
-    const arrayBuffer = await compileStudioFont(fontName);
-    const fontFace = new FontFace(fontName, arrayBuffer);
+    const arrayBuffer = await compileStudioFont(baseName);
+    const fontFace = new FontFace(uniqueFamily, arrayBuffer);
     const loadedFont = await fontFace.load();
+
+    // Hapus font kustom sebelumnya dari document.fonts agar tidak terjadi bentrok cache canvas
+    Array.from(document.fonts).forEach(f => {
+      if (f.family.startsWith(baseName) || f.family.startsWith('CustomHandwrittenFont_')) {
+        document.fonts.delete(f);
+      }
+    });
+
     document.fonts.add(loadedFont);
 
     // Save to IndexedDB
     await saveAssetToDB('custom_font', {
-      name: `${fontName}.ttf`,
-      fontFamily: fontName,
+      name: `${baseName}.ttf`,
+      fontFamily: uniqueFamily,
+      isStudioFont: true,
       buffer: arrayBuffer,
       date: Date.now()
     });
 
-    state.font.family = fontName;
+    state.font.family = uniqueFamily;
     state.font.isCustom = true;
-    state.font.customFontName = `${fontName}.ttf`;
+    state.font.customFontName = `${baseName}.ttf`;
 
     fontStatusBadge.textContent = 'Font Studio Aktif';
     fontStatusBadge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200';
-    savedFontLabel.textContent = `${fontName}.ttf`;
+    savedFontLabel.textContent = `${baseName}.ttf`;
     fontStorageInfo.classList.remove('hidden');
 
     fontPresetContainer.querySelectorAll('.font-preset-btn').forEach(b => b.classList.remove('active'));

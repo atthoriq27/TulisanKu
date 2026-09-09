@@ -1,10 +1,11 @@
 /* Global layout fix: lock body to viewport to enable independent panel scrolling */
 html, body {
   height: 100%;
-  max-height: 100vh;
+  height: 100dvh;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 header.app-header {
@@ -12,14 +13,34 @@ header.app-header {
   flex-shrink: 0;
 }
 
+#mobileTabBar {
+  flex-shrink: 0;
+}
+
 main.main-workspace {
-  height: calc(100vh - 61px);
-  max-height: calc(100vh - 61px);
-  min-height: 0;
   flex: 1 1 0%;
+  min-height: 0;
   display: flex;
   overflow: hidden;
   position: relative;
+}
+
+@media (min-width: 1024px) {
+  main.main-workspace {
+    height: calc(100vh - 61px);
+    max-height: calc(100vh - 61px);
+  }
+}
+
+/* Prevent mobile browsers (iOS Safari & Android Chrome) from auto-zooming when tapping inputs */
+@media screen and (max-width: 1024px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 /* Sidebar scroll independently */

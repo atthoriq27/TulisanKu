@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>TulisanKu - Generator Tulisan Tangan di Kertas & Foto</title>
   <meta name="description" content="Aplikasi pembuat tulisan tangan otomatis di atas kertas buku tulis, binder, dan folio dengan font kustom, filter CamScanner, dan ekspor PDF.">
   <meta name="theme-color" content="#2563eb">
@@ -94,7 +94,7 @@
   </header>
 
   <!-- Mobile View Switcher Tab (Hanya tampil di HP/Tablet < lg) -->
-  <div class="lg:hidden bg-white border-b border-slate-200 px-4 py-2 sticky top-[57px] z-30 flex items-center justify-center shadow-xs">
+  <div id="mobileTabBar" class="lg:hidden bg-white border-b border-slate-200 px-4 py-2 shrink-0 z-30 flex items-center justify-center shadow-xs">
     <div class="inline-flex p-1 bg-slate-100 rounded-xl w-full max-w-sm border border-slate-200 text-xs font-semibold">
       <button type="button" id="mobileTabControls" class="flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-xs text-center flex items-center justify-center gap-1.5 transition">
         <i class="ph-bold ph-sliders-horizontal"></i> Pengaturan & Teks
@@ -106,13 +106,13 @@
   </div>
 
   <!-- Main Workspace -->
-  <main class="main-workspace flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0 h-[calc(100vh-61px)]">
+  <main class="main-workspace flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
 
     <!-- Left Controls Panel -->
     <aside id="controlsPanel" class="w-full lg:w-[440px] xl:w-[480px] bg-white border-r border-slate-200 flex flex-col h-full max-h-full min-h-0 overflow-y-auto custom-scrollbar z-20 shadow-sm shrink-0">
       
       <!-- Accordion Navigation / Tabs -->
-      <div class="p-4 space-y-4">
+      <div class="p-4 space-y-4 pb-24 lg:pb-4">
 
         <!-- 1. FONT SECTION -->
         <div class="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80">
@@ -1027,6 +1027,12 @@ Setiap sila memuat nilai-nilai luhur kepribadian bangsa yang saling terhubung sa
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- Floating Quick Switch Button for Mobile (Selalu mengambang di pojok kanan bawah HP) -->
+  <button type="button" id="mobileFloatingToggleBtn" class="lg:hidden fixed bottom-5 right-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold text-xs shadow-lg shadow-blue-600/35 border border-blue-400/30 transition-all cursor-pointer select-none">
+    <i id="mobileFloatingIcon" class="ph-bold ph-eye text-base"></i>
+    <span id="mobileFloatingText">Lihat Hasil Kertas</span>
+  </button>
+
+  <script src="app.js?v=2.3"></script>
 </body>
 </html>
