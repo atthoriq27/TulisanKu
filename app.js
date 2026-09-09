@@ -49,32 +49,32 @@ const state = {
     }
   },
   tuning: {
-    fontSize: 26,
+    fontSize: 27,
     lineHeight: 46,
     marginTop: 145,
     marginLeft: 130,
     marginRight: 80,
     marginBottom: 100,
     letterSpacing: 0,
-    slant: 0,
+    slant: 5.5,
     headerMarginTop: 95,
     headerMarginLeft: 130,
     headerLineHeight: 40,
     headerFontSize: 24,
   },
   realism: {
-    inkColor: '#1e293b',
-    inkOpacity: 0.94,
+    inkColor: '#0f172a',
+    inkOpacity: 0.97,
     jitter: 2.0,
     blendMultiply: true,
   },
   cameraFilter: {
-    preset: 'none', // 'none' | 'camscanner' | 'desk_photo' | 'warm_lamp' | 'scanner_bw' | 'daylight'
-    shadowIntensity: 25,
+    preset: 'desk_photo', // 'none' | 'camscanner' | 'desk_photo' | 'warm_lamp' | 'scanner_bw' | 'daylight'
+    shadowIntensity: 28,
     randomShadow: true,
-    noiseIntensity: 15,
-    paperFold: false,
-    foldIntensity: 40,
+    noiseIntensity: 14,
+    paperFold: true,
+    foldIntensity: 25,
     foldStyle: 'random', // 'random' | 'vertical' | 'cross' | 'horizontal' | 'diagonal'
     randomFold: true,
     baselineDrift: 0.8,
@@ -420,14 +420,14 @@ function generatePresetPaper(presetName) {
     pCtx.fillText('DATE  : ..............................', pCanvas.width - 240, 80);
 
   } else if (presetName === 'sidu-folio') {
-    // 3. Kertas Double Folio SIDU - Putih bersih garis biru muda, TANPA garis merah!
-    pCtx.fillStyle = '#fdfdfc';
+    // 3. Kertas Double Folio SIDU - Kertas putih gading alami, garis abu-abu kebiruan lembut
+    pCtx.fillStyle = '#faf8f2';
     pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
-    addPaperGrain(pCtx, pCanvas.width, pCanvas.height, 0.015);
+    addPaperGrain(pCtx, pCanvas.width, pCanvas.height, 0.022);
 
     // Garis horizontal ganda di atas (khas double folio Indonesia untuk batas header)
-    pCtx.strokeStyle = '#93c5fd';
-    pCtx.lineWidth = 1.5;
+    pCtx.strokeStyle = '#94a3b8';
+    pCtx.lineWidth = 1.4;
     pCtx.beginPath();
     pCtx.moveTo(0, 96);
     pCtx.lineTo(pCanvas.width, 96);
@@ -438,9 +438,9 @@ function generatePresetPaper(presetName) {
     pCtx.lineTo(pCanvas.width, 102);
     pCtx.stroke();
 
-    // Garis horizontal biru muda lembut (46px grid)
-    pCtx.strokeStyle = '#bfdbfe';
-    pCtx.lineWidth = 1.3;
+    // Garis horizontal biru-abu lembut (46px grid)
+    pCtx.strokeStyle = '#94a3b8';
+    pCtx.lineWidth = 1.1;
     for (let y = 145; y < pCanvas.height - 60; y += 46) {
       pCtx.beginPath();
       pCtx.moveTo(0, y);
@@ -1202,30 +1202,35 @@ function applyCameraFilterPostProcess(pCtx, pageNum, paperWidth, paperHeight) {
 
   } else if (preset === 'desk_photo') {
     pCtx.save();
-    // 1. Natural Ambient Room Light (Slightly brighter at top, gentle realistic falloff)
+    // 1. Natural Ambient Room Light & Camera Warmth (Authentic warm physical paper tint)
+    pCtx.globalCompositeOperation = 'multiply';
+    pCtx.fillStyle = 'rgba(253, 249, 238, 0.90)';
+    pCtx.fillRect(0, 0, paperWidth, paperHeight);
+
+    // 2. Natural Room Light Falloff (Top slightly brighter from ceiling lamp, subtle depth)
     const ambientGrad = pCtx.createLinearGradient(paperWidth * 0.2, 0, paperWidth * 0.8, paperHeight);
-    ambientGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    ambientGrad.addColorStop(0, 'rgba(255, 252, 245, 0.12)');
     ambientGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
-    ambientGrad.addColorStop(1, 'rgba(15, 23, 42, 0.04)');
+    ambientGrad.addColorStop(1, 'rgba(15, 20, 35, 0.05)');
     pCtx.globalCompositeOperation = 'multiply';
     pCtx.fillStyle = ambientGrad;
     pCtx.fillRect(0, 0, paperWidth, paperHeight);
 
-    // 2. Camera Lens Vignette (Gentle natural phone lens falloff at edges)
+    // 3. Camera Lens Vignette (Gentle natural phone lens falloff at edges)
     const maxDim = Math.max(paperWidth, paperHeight);
     const camVig = pCtx.createRadialGradient(
       paperWidth * 0.5, paperHeight * 0.48, maxDim * 0.35,
       paperWidth * 0.5, paperHeight * 0.48, maxDim * 0.72
     );
     camVig.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    camVig.addColorStop(0.7, 'rgba(15, 23, 42, 0.025)');
-    camVig.addColorStop(1, 'rgba(15, 23, 42, 0.08)');
+    camVig.addColorStop(0.7, 'rgba(15, 23, 42, 0.03)');
+    camVig.addColorStop(1, 'rgba(15, 23, 42, 0.10)');
     pCtx.globalCompositeOperation = 'multiply';
     pCtx.fillStyle = camVig;
     pCtx.fillRect(0, 0, paperWidth, paperHeight);
     pCtx.restore();
 
-    // 3. Diffuse Smartphone Silhouette Shadow at bottom (Varied per page)
+    // 4. Diffuse Smartphone Silhouette Shadow at bottom (Varied per page)
     if (shadowIntensity > 0) {
       drawRealisticPhoneShadow(pCtx, paperWidth, paperHeight, shadowIntensity, pageNum, filter.randomShadow !== false, '15, 23, 42');
     }
@@ -2131,15 +2136,31 @@ function setupEventListeners() {
           state.cameraFilter.noiseIntensity = 12;
           state.cameraFilter.baselineDrift = 0.6;
         } else if (filterName === 'desk_photo') {
-          state.cameraFilter.shadowIntensity = 25;
-          state.cameraFilter.noiseIntensity = 15;
+          state.cameraFilter.shadowIntensity = 28;
+          state.cameraFilter.noiseIntensity = 14;
           state.cameraFilter.baselineDrift = 0.8;
+          state.cameraFilter.paperFold = true;
+          state.cameraFilter.foldIntensity = 25;
+          if (filterFoldToggle) filterFoldToggle.checked = true;
+          if (filterFoldSlider) filterFoldSlider.value = 25;
+          if (filterFoldVal) filterFoldVal.textContent = '25%';
+          if (typeof updateFoldControlsVisibility === 'function') updateFoldControlsVisibility();
+          if (state.tuning.slant === 0) {
+            state.tuning.slant = 5.5;
+            if (slantSlider) slantSlider.value = 5.5;
+            if (slantVal) slantVal.textContent = '5.5°';
+          }
         } else if (filterName === 'warm_lamp') {
-          state.cameraFilter.shadowIntensity = 20;
-          state.cameraFilter.noiseIntensity = 15;
+          state.cameraFilter.shadowIntensity = 22;
+          state.cameraFilter.noiseIntensity = 14;
           state.cameraFilter.baselineDrift = 0.8;
+          if (state.tuning.slant === 0) {
+            state.tuning.slant = 5.5;
+            if (slantSlider) slantSlider.value = 5.5;
+            if (slantVal) slantVal.textContent = '5.5°';
+          }
         } else if (filterName === 'daylight') {
-          state.cameraFilter.shadowIntensity = 15;
+          state.cameraFilter.shadowIntensity = 18;
           state.cameraFilter.noiseIntensity = 10;
           state.cameraFilter.baselineDrift = 0.8;
         } else if (filterName === 'scanner_bw') {
@@ -3428,7 +3449,9 @@ function strokesToOpentypePath(strokes, penWidth) {
   if (!strokes || strokes.length === 0) return { path, minX: 0, maxX: 0, advanceWidth: 350 };
 
   const S = 4.1;
-  const radius = (penWidth / 2) * S;
+  // Boost stroke width so hand-drawn letters have authentic 0.5-0.7mm gel pen thickness & body
+  const effectivePenWidth = Math.max(16, (penWidth || 12) * 1.35);
+  const radius = (effectivePenWidth / 2) * S;
 
   let overallMinX = Infinity;
   let overallMaxX = -Infinity;
