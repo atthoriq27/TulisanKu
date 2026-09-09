@@ -737,7 +737,7 @@ Setiap sila memuat nilai-nilai luhur kepribadian bangsa yang saling terhubung sa
 
           <!-- Fine-Tuning Controls -->
           <div class="space-y-3 text-xs border-t border-slate-200/80 pt-3">
-            <!-- Shadow Intensity -->
+            <!-- Shadow Intensity & Randomization -->
             <div>
               <div class="flex justify-between text-slate-600 mb-1">
                 <span class="flex items-center gap-1">
@@ -754,6 +754,12 @@ Setiap sila memuat nilai-nilai luhur kepribadian bangsa yang saling terhubung sa
                 <span id="filterShadowVal" class="font-semibold text-slate-800">25%</span>
               </div>
               <input type="range" id="filterShadowSlider" min="0" max="60" step="5" value="25" class="w-full accent-blue-600 cursor-pointer">
+              <div class="flex items-center justify-between mt-1 text-[11px] text-slate-500">
+                <label for="filterRandomShadowToggle" class="cursor-pointer flex items-center gap-1.5 hover:text-slate-700 select-none" title="Setiap halaman memiliki sudut & posisi bayangan sedikit berbeda agar tidak terlihat seperti template yang sama">
+                  <input type="checkbox" id="filterRandomShadowToggle" checked class="w-3.5 h-3.5 text-blue-600 rounded cursor-pointer">
+                  <span>Variasi bayangan tiap halaman</span>
+                </label>
+              </div>
             </div>
 
             <!-- Sensor Grain / Noise -->
@@ -794,13 +800,43 @@ Setiap sila memuat nilai-nilai luhur kepribadian bangsa yang saling terhubung sa
               <input type="range" id="filterWaveSlider" min="0" max="3" step="0.2" value="0.8" class="w-full accent-blue-600 cursor-pointer">
             </div>
 
-            <!-- Paper Fold / Crease Toggle -->
-            <div class="flex items-center justify-between pt-1">
-              <label for="filterFoldToggle" class="cursor-pointer select-none text-slate-700 font-medium flex items-center gap-2">
-                <input type="checkbox" id="filterFoldToggle" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
-                <span>Bekas Lipatan Kertas (Crease)</span>
-              </label>
-              <span class="text-[10px] text-slate-400">Lipatan tengah</span>
+            <!-- Paper Fold / Crease Controls -->
+            <div class="pt-2 border-t border-slate-200/60 space-y-2">
+              <div class="flex items-center justify-between">
+                <label for="filterFoldToggle" class="cursor-pointer select-none text-slate-700 font-medium flex items-center gap-2">
+                  <input type="checkbox" id="filterFoldToggle" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
+                  <span>Bekas Lipatan Kertas (Crease)</span>
+                </label>
+                <span id="filterFoldVal" class="font-semibold text-slate-800">40%</span>
+              </div>
+
+              <!-- Fold options container -->
+              <div id="foldControlsContainer" class="space-y-2 pl-6 transition-all">
+                <div>
+                  <div class="flex justify-between text-slate-500 text-[11px] mb-1">
+                    <span>Intensitas / Ketebalan Lipatan</span>
+                  </div>
+                  <input type="range" id="filterFoldSlider" min="5" max="100" step="5" value="40" class="w-full accent-blue-600 cursor-pointer">
+                </div>
+
+                <div>
+                  <label for="filterFoldStyle" class="block text-slate-500 text-[11px] mb-1">Bentuk Lipatan:</label>
+                  <select id="filterFoldStyle" class="w-full text-xs rounded-lg border border-slate-200 bg-white py-1.5 px-2 text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <option value="random">Acak Otomatis (Tiap Hal Beda)</option>
+                    <option value="vertical">Lipatan Tengah (Vertikal)</option>
+                    <option value="cross">Lipatan 4 Bagian (Silang)</option>
+                    <option value="horizontal">Lipatan Sepertiga (Horizontal)</option>
+                    <option value="diagonal">Lipatan Miring Sudut</option>
+                  </select>
+                </div>
+
+                <div class="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                  <label for="filterRandomFoldToggle" class="cursor-pointer flex items-center gap-1.5 hover:text-slate-700 select-none" title="Setiap halaman memiliki sudut kemiringan & lekukan lipatan sedikit berbeda">
+                    <input type="checkbox" id="filterRandomFoldToggle" checked class="w-3.5 h-3.5 text-blue-600 rounded cursor-pointer">
+                    <span>Variasi sudut acak tiap halaman</span>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <!-- CamScanner Authentic Watermark Toggle -->
@@ -1033,6 +1069,6 @@ Setiap sila memuat nilai-nilai luhur kepribadian bangsa yang saling terhubung sa
     <span id="mobileFloatingText">Lihat Hasil Kertas</span>
   </button>
 
-  <script src="app.js?v=2.3"></script>
+  <script src="app.js?v=2.4"></script>
 </body>
 </html>

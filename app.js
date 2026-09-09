@@ -71,8 +71,12 @@ const state = {
   cameraFilter: {
     preset: 'none', // 'none' | 'camscanner' | 'desk_photo' | 'warm_lamp' | 'scanner_bw' | 'daylight'
     shadowIntensity: 25,
+    randomShadow: true,
     noiseIntensity: 15,
     paperFold: false,
+    foldIntensity: 40,
+    foldStyle: 'random', // 'random' | 'vertical' | 'cross' | 'horizontal' | 'diagonal'
+    randomFold: true,
     baselineDrift: 0.8,
     camScannerWatermark: false
   },
@@ -159,11 +163,16 @@ const blendModeToggle = document.getElementById('blendModeToggle');
 const cameraFilterPresets = document.getElementById('cameraFilterPresets');
 const filterShadowSlider = document.getElementById('filterShadowSlider');
 const filterShadowVal = document.getElementById('filterShadowVal');
+const filterRandomShadowToggle = document.getElementById('filterRandomShadowToggle');
 const filterNoiseSlider = document.getElementById('filterNoiseSlider');
 const filterNoiseVal = document.getElementById('filterNoiseVal');
 const filterWaveSlider = document.getElementById('filterWaveSlider');
 const filterWaveVal = document.getElementById('filterWaveVal');
 const filterFoldToggle = document.getElementById('filterFoldToggle');
+const filterFoldSlider = document.getElementById('filterFoldSlider');
+const filterFoldVal = document.getElementById('filterFoldVal');
+const filterFoldStyle = document.getElementById('filterFoldStyle');
+const filterRandomFoldToggle = document.getElementById('filterRandomFoldToggle');
 const camScannerWatermarkToggle = document.getElementById('camScannerWatermarkToggle');
 
 // Human Error & Text Formatting Controls
@@ -1017,6 +1026,144 @@ function getCameraNoiseCanvas() {
   return cachedNoiseCanvas;
 }
 
+// Deterministic pseudo-random generator seeded by pageNum
+function createPageRandom(pageNum, salt = 0) {
+  let a = (((pageNum || 1) * 1597 + salt * 51749 + 104729) >>> 0);
+  return function() {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Realistic Diffuse Phone & Hand Silhouette Shadow
+function drawRealisticPhoneShadow(pCtx, paperWidth, paperHeight, shadowFactor, pageNum, randomize, colorRgba = '15, 23, 42') {
+  if (shadowFactor <= 0) return;
+
+  pCtx.save();
+  const sAlpha = shadowFactor * 0.28;
+
+  let centerX = paperWidth * 0.5;
+  let centerY = paperHeight * 1.05;
+  let tilt = 0;
+  let radiusX = paperWidth * 0.75;
+  let radiusY = paperHeight * 0.45;
+
+  let hasSideSilhouette = false;
+  let sideX = 0;
+  let sideY = 0;
+  let sideRadius = paperWidth * 0.32;
+
+  if (randomize) {
+    const pr = createPageRandom(pageNum, 101);
+    const r1 = pr();
+    const r2 = pr();
+    const r3 = pr();
+    const r4 = pr();
+    const r5 = pr();
+    const r6 = pr();
+
+    // Center shifts naturally between 38% and 62% width, and 98% to 108% height
+    centerX = paperWidth * (0.38 + r1 * 0.24);
+    centerY = paperHeight * (0.97 + r2 * 0.10);
+    tilt = (r3 - 0.5) * 0.30; // approx -8.5° to +8.5° natural phone tilt in hands
+    radiusX = paperWidth * (0.65 + r4 * 0.25);
+    radiusY = paperHeight * (0.38 + r5 * 0.18);
+
+    // Subtle side hand/thumb blur on some pages
+    if (r6 > 0.45) {
+      hasSideSilhouette = true;
+      const isRightSide = r1 > 0.48;
+      sideX = isRightSide ? paperWidth * (0.86 + r2 * 0.10) : paperWidth * (0.04 + r2 * 0.10);
+      sideY = paperHeight * (0.80 + r3 * 0.14);
+      sideRadius = paperWidth * (0.28 + r4 * 0.12);
+    }
+  }
+
+  // Draw main phone silhouette (rotated & scaled ellipse)
+  pCtx.translate(centerX, centerY);
+  pCtx.rotate(tilt);
+  const scaleY = radiusY / radiusX;
+  pCtx.scale(1, scaleY);
+
+  const shadowGrad = pCtx.createRadialGradient(
+    0, 0, radiusX * 0.12,
+    0, 0, radiusX
+  );
+  shadowGrad.addColorStop(0, `rgba(${colorRgba}, ${sAlpha})`);
+  shadowGrad.addColorStop(0.35, `rgba(${colorRgba}, ${sAlpha * 0.65})`);
+  shadowGrad.addColorStop(0.75, `rgba(${colorRgba}, ${sAlpha * 0.18})`);
+  shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  pCtx.globalCompositeOperation = 'multiply';
+  pCtx.fillStyle = shadowGrad;
+  pCtx.beginPath();
+  pCtx.arc(0, 0, radiusX, 0, Math.PI * 2);
+  pCtx.fill();
+  pCtx.restore();
+
+  // Draw side thumb/hand silhouette if present
+  if (hasSideSilhouette) {
+    pCtx.save();
+    const handGrad = pCtx.createRadialGradient(
+      sideX, sideY, sideRadius * 0.08,
+      sideX, sideY, sideRadius
+    );
+    handGrad.addColorStop(0, `rgba(${colorRgba}, ${sAlpha * 0.55})`);
+    handGrad.addColorStop(0.5, `rgba(${colorRgba}, ${sAlpha * 0.20})`);
+    handGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    pCtx.globalCompositeOperation = 'multiply';
+    pCtx.fillStyle = handGrad;
+    pCtx.beginPath();
+    pCtx.arc(sideX, sideY, sideRadius, 0, Math.PI * 2);
+    pCtx.fill();
+    pCtx.restore();
+  }
+}
+
+// Draw realistic paper crease segment with shadow, specular highlight, and fiber fracture
+function renderCreaseSegment(pCtx, x1, y1, x2, y2, foldWidth, intensityFactor) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+
+  const angle = Math.atan2(dy, dx);
+  pCtx.save();
+  pCtx.translate(x1, y1);
+  pCtx.rotate(angle);
+
+  // 1. Shadow side (above fold axis, y < 0)
+  const shadowGrad = pCtx.createLinearGradient(0, -foldWidth, 0, 0);
+  shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  shadowGrad.addColorStop(0.65, `rgba(15, 23, 42, ${0.05 * intensityFactor})`);
+  shadowGrad.addColorStop(1, `rgba(15, 23, 42, ${0.18 * intensityFactor})`);
+  pCtx.globalCompositeOperation = 'multiply';
+  pCtx.fillStyle = shadowGrad;
+  pCtx.fillRect(0, -foldWidth, len, foldWidth);
+
+  // 2. Highlight side (below fold axis, y > 0)
+  const highlightGrad = pCtx.createLinearGradient(0, 0, 0, foldWidth);
+  highlightGrad.addColorStop(0, `rgba(255, 255, 255, ${0.25 * intensityFactor})`);
+  highlightGrad.addColorStop(0.35, `rgba(255, 255, 255, ${0.09 * intensityFactor})`);
+  highlightGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  pCtx.globalCompositeOperation = 'screen';
+  pCtx.fillStyle = highlightGrad;
+  pCtx.fillRect(0, 0, len, foldWidth);
+
+  // 3. Crisp paper fiber hairline along the crease ridge
+  pCtx.globalCompositeOperation = 'multiply';
+  pCtx.strokeStyle = `rgba(30, 41, 59, ${0.14 * intensityFactor})`;
+  pCtx.lineWidth = Math.max(0.8, 1.6 * intensityFactor);
+  pCtx.beginPath();
+  pCtx.moveTo(0, 0);
+  pCtx.lineTo(len, 0);
+  pCtx.stroke();
+
+  pCtx.restore();
+}
+
 // Post-Processing Camera & Scanner Filters (Anti-Curiga Dosen)
 function applyCameraFilterPostProcess(pCtx, pageNum, paperWidth, paperHeight) {
   const filter = state.cameraFilter;
@@ -1076,23 +1223,12 @@ function applyCameraFilterPostProcess(pCtx, pageNum, paperWidth, paperHeight) {
     pCtx.globalCompositeOperation = 'multiply';
     pCtx.fillStyle = camVig;
     pCtx.fillRect(0, 0, paperWidth, paperHeight);
-
-    // 3. Diffuse Smartphone Silhouette Shadow at bottom
-    if (shadowIntensity > 0) {
-      const sAlpha = shadowIntensity * 0.28;
-      const shadowGrad = pCtx.createRadialGradient(
-        paperWidth * 0.5, paperHeight * 1.05, paperWidth * 0.15,
-        paperWidth * 0.5, paperHeight * 0.92, paperWidth * 0.75
-      );
-      shadowGrad.addColorStop(0, `rgba(15, 23, 42, ${sAlpha})`);
-      shadowGrad.addColorStop(0.4, `rgba(30, 41, 59, ${sAlpha * 0.6})`);
-      shadowGrad.addColorStop(0.8, `rgba(51, 65, 85, ${sAlpha * 0.2})`);
-      shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      pCtx.globalCompositeOperation = 'multiply';
-      pCtx.fillStyle = shadowGrad;
-      pCtx.fillRect(0, 0, paperWidth, paperHeight);
-    }
     pCtx.restore();
+
+    // 3. Diffuse Smartphone Silhouette Shadow at bottom (Varied per page)
+    if (shadowIntensity > 0) {
+      drawRealisticPhoneShadow(pCtx, paperWidth, paperHeight, shadowIntensity, pageNum, filter.randomShadow !== false, '15, 23, 42');
+    }
 
   } else if (preset === 'warm_lamp') {
     pCtx.save();
@@ -1101,10 +1237,12 @@ function applyCameraFilterPostProcess(pCtx, pageNum, paperWidth, paperHeight) {
     pCtx.fillStyle = 'rgba(255, 248, 230, 0.95)';
     pCtx.fillRect(0, 0, paperWidth, paperHeight);
 
-    // 2. Desk Lamp Spotlight from top-left (Soft Ivory/Amber Highlight)
-    const lampX = paperWidth * 0.25;
-    const lampY = paperHeight * 0.15;
-    const lampRadius = Math.max(paperWidth, paperHeight) * 0.85;
+    // 2. Desk Lamp Spotlight from top-left (Soft Ivory/Amber Highlight, subtle angle shift per page)
+    const isRnd = filter.randomShadow !== false;
+    const prLamp = isRnd ? createPageRandom(pageNum, 105) : () => 0.5;
+    const lampX = paperWidth * (0.21 + (prLamp() - 0.5) * 0.08);
+    const lampY = paperHeight * (0.13 + (prLamp() - 0.5) * 0.06);
+    const lampRadius = Math.max(paperWidth, paperHeight) * (0.82 + (prLamp() - 0.5) * 0.08);
     const lampHighlight = pCtx.createRadialGradient(lampX, lampY, 30, lampX, lampY, lampRadius);
     lampHighlight.addColorStop(0, 'rgba(255, 235, 180, 0.18)');
     lampHighlight.addColorStop(0.4, 'rgba(255, 242, 205, 0.08)');
@@ -1122,27 +1260,20 @@ function applyCameraFilterPostProcess(pCtx, pageNum, paperWidth, paperHeight) {
     pCtx.globalCompositeOperation = 'multiply';
     pCtx.fillStyle = falloffGrad;
     pCtx.fillRect(0, 0, paperWidth, paperHeight);
+    pCtx.restore();
 
     // 4. Subtle smartphone shadow at bottom if slider > 0
     if (shadowIntensity > 0) {
-      const sAlpha = shadowIntensity * 0.22;
-      const shadowGrad = pCtx.createRadialGradient(
-        paperWidth * 0.5, paperHeight * 1.02, paperWidth * 0.1,
-        paperWidth * 0.5, paperHeight * 0.94, paperWidth * 0.75
-      );
-      shadowGrad.addColorStop(0, `rgba(30, 41, 59, ${sAlpha})`);
-      shadowGrad.addColorStop(0.5, `rgba(30, 41, 59, ${sAlpha * 0.5})`);
-      shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      pCtx.globalCompositeOperation = 'multiply';
-      pCtx.fillStyle = shadowGrad;
-      pCtx.fillRect(0, 0, paperWidth, paperHeight);
+      drawRealisticPhoneShadow(pCtx, paperWidth, paperHeight, shadowIntensity * 0.85, pageNum, filter.randomShadow !== false, '30, 41, 59');
     }
-    pCtx.restore();
 
   } else if (preset === 'daylight') {
     pCtx.save();
+    const isRnd = filter.randomShadow !== false;
+    const prDay = isRnd ? createPageRandom(pageNum, 107) : () => 0.5;
     // 1. Soft Window Daylight Gradient (Fresh daylight coming from the left window)
-    const windowGrad = pCtx.createLinearGradient(0, paperHeight * 0.2, paperWidth, paperHeight * 0.8);
+    const startY = paperHeight * (0.18 + (prDay() - 0.5) * 0.08);
+    const windowGrad = pCtx.createLinearGradient(0, startY, paperWidth, paperHeight * 0.85);
     windowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
     windowGrad.addColorStop(0.5, 'rgba(255, 250, 240, 0.03)');
     windowGrad.addColorStop(1, 'rgba(15, 23, 42, 0.04)');
@@ -1154,21 +1285,12 @@ function applyCameraFilterPostProcess(pCtx, pageNum, paperWidth, paperHeight) {
     pCtx.globalCompositeOperation = 'soft-light';
     pCtx.fillStyle = 'rgba(240, 248, 255, 0.08)';
     pCtx.fillRect(0, 0, paperWidth, paperHeight);
-
-    // 3. Subtle hand shadow if slider > 0
-    if (shadowIntensity > 0) {
-      const sAlpha = shadowIntensity * 0.20;
-      const shadowGrad = pCtx.createRadialGradient(
-        paperWidth * 0.8, paperHeight * 0.98, paperWidth * 0.1,
-        paperWidth * 0.7, paperHeight * 0.92, paperWidth * 0.65
-      );
-      shadowGrad.addColorStop(0, `rgba(15, 23, 42, ${sAlpha})`);
-      shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      pCtx.globalCompositeOperation = 'multiply';
-      pCtx.fillStyle = shadowGrad;
-      pCtx.fillRect(0, 0, paperWidth, paperHeight);
-    }
     pCtx.restore();
+
+    // 3. Subtle hand/phone shadow if slider > 0
+    if (shadowIntensity > 0) {
+      drawRealisticPhoneShadow(pCtx, paperWidth, paperHeight, shadowIntensity * 0.75, pageNum, filter.randomShadow !== false, '15, 23, 42');
+    }
 
   } else if (preset === 'scanner_bw') {
     pCtx.save();
@@ -1203,45 +1325,93 @@ function applyCameraFilterPostProcess(pCtx, pageNum, paperWidth, paperHeight) {
     pCtx.restore();
 
   } else if (preset === 'none' && shadowIntensity > 0) {
-    pCtx.save();
-    const sAlpha = shadowIntensity * 0.28;
-    const shadowGrad = pCtx.createRadialGradient(
-      paperWidth * 0.5, paperHeight * 1.05, paperWidth * 0.15,
-      paperWidth * 0.5, paperHeight * 0.92, paperWidth * 0.75
-    );
-    shadowGrad.addColorStop(0, `rgba(15, 20, 30, ${sAlpha})`);
-    shadowGrad.addColorStop(0.35, `rgba(25, 30, 40, ${sAlpha * 0.5})`);
-    shadowGrad.addColorStop(0.7, `rgba(35, 40, 50, ${sAlpha * 0.18})`);
-    shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    pCtx.globalCompositeOperation = 'multiply';
-    pCtx.fillStyle = shadowGrad;
-    pCtx.fillRect(0, 0, paperWidth, paperHeight);
-    pCtx.restore();
+    drawRealisticPhoneShadow(pCtx, paperWidth, paperHeight, shadowIntensity, pageNum, filter.randomShadow !== false, '15, 20, 30');
   }
 
-  // 2. Paper Fold / Crease (Lipatan Kertas Tengah)
+  // 2. Paper Fold / Crease Controls (Anti-Curiga Dosen)
   if (hasFold) {
-    pCtx.save();
-    const foldX = paperWidth * 0.5;
-    const foldW = 16;
-    // Shadow side (left)
-    const foldShadow = pCtx.createLinearGradient(foldX - foldW, 0, foldX, 0);
-    foldShadow.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    foldShadow.addColorStop(0.7, 'rgba(0, 0, 0, 0.04)');
-    foldShadow.addColorStop(1, 'rgba(0, 0, 0, 0.14)');
-    pCtx.globalCompositeOperation = 'multiply';
-    pCtx.fillStyle = foldShadow;
-    pCtx.fillRect(foldX - foldW, 0, foldW, paperHeight);
+    const foldFactor = (filter.foldIntensity !== undefined ? filter.foldIntensity : 40) / 100;
+    if (foldFactor > 0) {
+      const isRandomPerPage = filter.randomFold !== false;
+      const foldStyle = filter.foldStyle || 'random';
+      const baseW = 12 + foldFactor * 14;
 
-    // Highlight side (right)
-    const foldHighlight = pCtx.createLinearGradient(foldX, 0, foldX + foldW, 0);
-    foldHighlight.addColorStop(0, 'rgba(255, 255, 255, 0.20)');
-    foldHighlight.addColorStop(0.35, 'rgba(255, 255, 255, 0.07)');
-    foldHighlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    pCtx.globalCompositeOperation = 'screen';
-    pCtx.fillStyle = foldHighlight;
-    pCtx.fillRect(foldX, 0, foldW, paperHeight);
-    pCtx.restore();
+      const pr = isRandomPerPage ? createPageRandom(pageNum, 202) : () => 0.5;
+
+      // Determine fold type for this page
+      let effectiveStyle = foldStyle;
+      if (foldStyle === 'random') {
+        const styles = ['vertical', 'vertical', 'cross', 'vertical', 'horizontal', 'cross', 'diagonal'];
+        const styleIdx = Math.floor(pr() * styles.length);
+        effectiveStyle = styles[styleIdx];
+      }
+
+      if (effectiveStyle === 'vertical') {
+        // Natural vertical crease with slight tilt & position offset per page
+        const topOffset = isRandomPerPage ? (pr() - 0.5) * 0.08 : 0;
+        const btmOffset = isRandomPerPage ? (pr() - 0.5) * 0.08 : 0;
+        const x1 = paperWidth * (0.5 + topOffset);
+        const x2 = paperWidth * (0.5 + btmOffset);
+        renderCreaseSegment(pCtx, x1, 0, x2, paperHeight, baseW, foldFactor);
+
+      } else if (effectiveStyle === 'cross') {
+        // 4-Quadrant pocket fold (Vertical + Horizontal fold)
+        const topOffset = isRandomPerPage ? (pr() - 0.5) * 0.07 : 0;
+        const btmOffset = isRandomPerPage ? (pr() - 0.5) * 0.07 : 0;
+        const x1 = paperWidth * (0.5 + topOffset);
+        const x2 = paperWidth * (0.5 + btmOffset);
+        renderCreaseSegment(pCtx, x1, 0, x2, paperHeight, baseW, foldFactor * 0.9);
+
+        const leftOffset = isRandomPerPage ? (pr() - 0.5) * 0.06 : 0;
+        const rightOffset = isRandomPerPage ? (pr() - 0.5) * 0.06 : 0;
+        const y1 = paperHeight * (0.5 + leftOffset);
+        const y2 = paperHeight * (0.5 + rightOffset);
+        renderCreaseSegment(pCtx, 0, y1, paperWidth, y2, baseW, foldFactor * 0.85);
+
+        // Subtle center pucker shadow where creases cross
+        const midX = (x1 + x2) * 0.5;
+        const midY = (y1 + y2) * 0.5;
+        const crossPucker = pCtx.createRadialGradient(midX, midY, 2, midX, midY, baseW * 1.5);
+        crossPucker.addColorStop(0, `rgba(15, 23, 42, ${0.16 * foldFactor})`);
+        crossPucker.addColorStop(0.5, `rgba(15, 23, 42, ${0.05 * foldFactor})`);
+        crossPucker.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        pCtx.save();
+        pCtx.globalCompositeOperation = 'multiply';
+        pCtx.fillStyle = crossPucker;
+        pCtx.beginPath();
+        pCtx.arc(midX, midY, baseW * 1.5, 0, Math.PI * 2);
+        pCtx.fill();
+        pCtx.restore();
+
+      } else if (effectiveStyle === 'horizontal') {
+        // 3-Fold or half-horizontal fold
+        const posRatio = isRandomPerPage ? (pr() > 0.5 ? 0.35 : 0.5) : 0.5;
+        const leftOffset = isRandomPerPage ? (pr() - 0.5) * 0.05 : 0;
+        const rightOffset = isRandomPerPage ? (pr() - 0.5) * 0.05 : 0;
+        const y1 = paperHeight * (posRatio + leftOffset);
+        const y2 = paperHeight * (posRatio + rightOffset);
+        renderCreaseSegment(pCtx, 0, y1, paperWidth, y2, baseW, foldFactor);
+
+      } else if (effectiveStyle === 'diagonal') {
+        // Corner folded over / dog-ear crease
+        const isTopRight = isRandomPerPage ? pr() > 0.4 : true;
+        if (isTopRight) {
+          const cornerSize = paperWidth * (0.28 + (isRandomPerPage ? pr() * 0.12 : 0.05));
+          const x1 = paperWidth - cornerSize;
+          const y1 = 0;
+          const x2 = paperWidth;
+          const y2 = cornerSize * 1.2;
+          renderCreaseSegment(pCtx, x1, y1, x2, y2, baseW * 0.9, foldFactor);
+        } else {
+          const cornerSize = paperWidth * (0.25 + (isRandomPerPage ? pr() * 0.10 : 0.05));
+          const x1 = 0;
+          const y1 = paperHeight - cornerSize * 1.2;
+          const x2 = cornerSize;
+          const y2 = paperHeight;
+          renderCreaseSegment(pCtx, x1, y1, x2, y2, baseW * 0.9, foldFactor);
+        }
+      }
+    }
   }
 
     // 3. Sensor Noise / Grain (Bintik Kamera ISO)
@@ -2009,6 +2179,13 @@ function setupEventListeners() {
     });
   }
 
+  if (filterRandomShadowToggle) {
+    filterRandomShadowToggle.addEventListener('change', (e) => {
+      state.cameraFilter.randomShadow = e.target.checked;
+      render();
+    });
+  }
+
   if (filterNoiseSlider) {
     filterNoiseSlider.addEventListener('input', (e) => {
       state.cameraFilter.noiseIntensity = parseInt(e.target.value, 10);
@@ -2025,9 +2202,53 @@ function setupEventListeners() {
     });
   }
 
+  const foldControlsContainer = document.getElementById('foldControlsContainer');
+  function updateFoldControlsVisibility() {
+    if (!foldControlsContainer) return;
+    if (state.cameraFilter.paperFold) {
+      foldControlsContainer.classList.remove('opacity-40', 'pointer-events-none');
+    } else {
+      foldControlsContainer.classList.add('opacity-40', 'pointer-events-none');
+    }
+  }
+  updateFoldControlsVisibility();
+
   if (filterFoldToggle) {
     filterFoldToggle.addEventListener('change', (e) => {
       state.cameraFilter.paperFold = e.target.checked;
+      updateFoldControlsVisibility();
+      render();
+    });
+  }
+
+  if (filterFoldSlider) {
+    filterFoldSlider.addEventListener('input', (e) => {
+      state.cameraFilter.foldIntensity = parseInt(e.target.value, 10);
+      if (filterFoldVal) filterFoldVal.textContent = `${state.cameraFilter.foldIntensity}%`;
+      if (!state.cameraFilter.paperFold && filterFoldToggle) {
+        state.cameraFilter.paperFold = true;
+        filterFoldToggle.checked = true;
+        updateFoldControlsVisibility();
+      }
+      render();
+    });
+  }
+
+  if (filterFoldStyle) {
+    filterFoldStyle.addEventListener('change', (e) => {
+      state.cameraFilter.foldStyle = e.target.value;
+      if (!state.cameraFilter.paperFold && filterFoldToggle) {
+        state.cameraFilter.paperFold = true;
+        filterFoldToggle.checked = true;
+        updateFoldControlsVisibility();
+      }
+      render();
+    });
+  }
+
+  if (filterRandomFoldToggle) {
+    filterRandomFoldToggle.addEventListener('change', (e) => {
+      state.cameraFilter.randomFold = e.target.checked;
       render();
     });
   }
