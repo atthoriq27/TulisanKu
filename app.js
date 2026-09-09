@@ -366,10 +366,10 @@ function generatePresetPaper(presetName) {
   const pCtx = pCanvas.getContext('2d');
 
   if (presetName === 'sidu-lined') {
-    // 1. Buku Tulis SIDU Standar (SD/SMP) - Kertas krem lembut dengan garis merah di tepi kiri
-    pCtx.fillStyle = '#fbf9f4';
+    // 1. Buku Tulis SIDU Standar (SD/SMP) - Kertas putih bersih dengan garis merah di tepi kiri
+    pCtx.fillStyle = '#ffffff';
     pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
-    addPaperGrain(pCtx, pCanvas.width, pCanvas.height, 0.025);
+    addPaperGrain(pCtx, pCanvas.width, pCanvas.height, 0.015);
 
     // Garis horizontal biru muda (46px grid)
     pCtx.strokeStyle = '#c5d5ea';
@@ -420,10 +420,10 @@ function generatePresetPaper(presetName) {
     pCtx.fillText('DATE  : ..............................', pCanvas.width - 240, 80);
 
   } else if (presetName === 'sidu-folio') {
-    // 3. Kertas Double Folio SIDU - Kertas putih gading alami, garis abu-abu kebiruan lembut
-    pCtx.fillStyle = '#faf8f2';
+    // 3. Kertas Double Folio SIDU - Putih bersih, garis abu-abu kebiruan lembut
+    pCtx.fillStyle = '#ffffff';
     pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
-    addPaperGrain(pCtx, pCanvas.width, pCanvas.height, 0.022);
+    addPaperGrain(pCtx, pCanvas.width, pCanvas.height, 0.015);
 
     // Garis horizontal ganda di atas (khas double folio Indonesia untuk batas header)
     pCtx.strokeStyle = '#94a3b8';
@@ -1202,29 +1202,24 @@ function applyCameraFilterPostProcess(pCtx, pageNum, paperWidth, paperHeight) {
 
   } else if (preset === 'desk_photo') {
     pCtx.save();
-    // 1. Natural Ambient Room Light & Camera Warmth (Authentic warm physical paper tint)
-    pCtx.globalCompositeOperation = 'multiply';
-    pCtx.fillStyle = 'rgba(253, 249, 238, 0.90)';
-    pCtx.fillRect(0, 0, paperWidth, paperHeight);
-
-    // 2. Natural Room Light Falloff (Top slightly brighter from ceiling lamp, subtle depth)
+    // 1. Natural Ambient Room Light (Clean neutral lighting, zero yellow tint)
     const ambientGrad = pCtx.createLinearGradient(paperWidth * 0.2, 0, paperWidth * 0.8, paperHeight);
-    ambientGrad.addColorStop(0, 'rgba(255, 252, 245, 0.12)');
-    ambientGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
-    ambientGrad.addColorStop(1, 'rgba(15, 20, 35, 0.05)');
+    ambientGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    ambientGrad.addColorStop(0.6, 'rgba(0, 0, 0, 0)');
+    ambientGrad.addColorStop(1, 'rgba(15, 23, 42, 0.035)');
     pCtx.globalCompositeOperation = 'multiply';
     pCtx.fillStyle = ambientGrad;
     pCtx.fillRect(0, 0, paperWidth, paperHeight);
 
-    // 3. Camera Lens Vignette (Gentle natural phone lens falloff at edges)
+    // 2. Camera Lens Vignette (Gentle natural phone lens falloff at edges)
     const maxDim = Math.max(paperWidth, paperHeight);
     const camVig = pCtx.createRadialGradient(
       paperWidth * 0.5, paperHeight * 0.48, maxDim * 0.35,
       paperWidth * 0.5, paperHeight * 0.48, maxDim * 0.72
     );
     camVig.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    camVig.addColorStop(0.7, 'rgba(15, 23, 42, 0.03)');
-    camVig.addColorStop(1, 'rgba(15, 23, 42, 0.10)');
+    camVig.addColorStop(0.7, 'rgba(15, 23, 42, 0.02)');
+    camVig.addColorStop(1, 'rgba(15, 23, 42, 0.06)');
     pCtx.globalCompositeOperation = 'multiply';
     pCtx.fillStyle = camVig;
     pCtx.fillRect(0, 0, paperWidth, paperHeight);
