@@ -6,7 +6,8 @@
 const PAPER_SIZES = {
   a4: { width: 1654, height: 2338, label: '1654 × 2338 px' },
   f4: { width: 1654, height: 2550, label: '1654 × 2550 px' },
-  b5: { width: 1417, height: 2008, label: '1417 × 2008 px' }
+  b5: { width: 1417, height: 2008, label: '1417 × 2008 px' },
+  a5: { width: 1169, height: 1654, label: '1169 × 1654 px' }
 };
 
 // Aliases mapping for legacy/saved presets to Indonesian stationery presets
@@ -512,6 +513,7 @@ function generatePresetPaper(presetName) {
     const holeRadius = 18;
     const holeYs = [200, 450, 700, 950, 1200, 1450, 1700, 1950, 2200];
     holeYs.forEach(y => {
+      if (y > pCanvas.height - 50) return;
       pCtx.fillStyle = '#f1f5f9';
       pCtx.beginPath();
       pCtx.arc(holeX, y, holeRadius, 0, Math.PI * 2);
@@ -547,6 +549,7 @@ function generatePresetPaper(presetName) {
     const holeRadius = 18;
     const holeYs = [200, 450, 700, 950, 1200, 1450, 1700, 1950, 2200];
     holeYs.forEach(y => {
+      if (y > pCanvas.height - 50) return;
       pCtx.fillStyle = '#f1f5f9';
       pCtx.beginPath();
       pCtx.arc(holeX, y, holeRadius, 0, Math.PI * 2);
@@ -576,6 +579,7 @@ function generatePresetPaper(presetName) {
     const holeRadius = 18;
     const holeYs = [200, 450, 700, 950, 1200, 1450, 1700, 1950, 2200];
     holeYs.forEach(y => {
+      if (y > pCanvas.height - 50) return;
       pCtx.fillStyle = '#f1f5f9';
       pCtx.beginPath();
       pCtx.arc(holeX, y, holeRadius, 0, Math.PI * 2);
