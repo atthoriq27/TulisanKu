@@ -523,6 +523,21 @@ function generatePresetPaper(presetName) {
       pCtx.stroke();
     });
 
+  } else if (presetName === 'kiky-binder-clean') {
+    // KIKY Loose Leaf (Binder Bergaris Tanpa Lubang Ring) - Bersih tanpa bolongan, cocok diprint langsung ke kertas binder fisik
+    pCtx.fillStyle = '#ffffff';
+    pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
+    addPaperGrain(pCtx, pCanvas.width, pCanvas.height, 0.02);
+
+    pCtx.strokeStyle = '#cbd5e1';
+    pCtx.lineWidth = 1.2;
+    for (let y = 140; y < pCanvas.height - 70; y += 44) {
+      pCtx.beginPath();
+      pCtx.moveTo(70, y);
+      pCtx.lineTo(pCanvas.width - 20, y);
+      pCtx.stroke();
+    }
+
   } else if (presetName === 'kiky-binder-grid') {
     // 7. KIKY Loose Leaf (Binder Kotak) - Grid 30px + Lubang binder
     pCtx.fillStyle = '#ffffff';
@@ -1854,7 +1869,7 @@ function setupEventListeners() {
         marginTopVal.textContent = '140px';
         marginLeftSlider.value = 120;
         marginLeftVal.textContent = '120px';
-      } else if (p === 'kiky-binder-line') {
+      } else if (p === 'kiky-binder-line' || p === 'kiky-binder-clean') {
         state.tuning.lineHeight = 44;
         state.tuning.marginTop = 140;
         state.tuning.marginLeft = 135;
